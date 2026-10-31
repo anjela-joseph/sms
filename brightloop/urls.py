@@ -24,6 +24,7 @@ urlpatterns = [
     path("subscriptions/new/", core.new_subscription, name="new_subscription"),
     path("subscriptions/", subscription_views.subscription_list, name="subscription_list"),
     path("subscriptions/<int:pk>/", subscription_views.subscription_detail, name="subscription_detail"),
+    path("subscriptions/<int:pk>/action/", subscription_views.subscription_action, name="subscription_action"),
     path("invoices/<int:pk>/", core.invoice_detail, name="invoice_detail"),
     path("portal/", core.portal, name="portal"),
     path("portal/subscriptions/<int:pk>/<str:action>/", core.portal_action, name="portal_action"),

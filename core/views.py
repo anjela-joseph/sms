@@ -103,6 +103,12 @@ class NewSubscriptionForm(forms.Form):
     template = forms.ModelChoiceField(QuotationTemplate.objects.select_related("plan"))
     start_date = forms.DateField(initial=date.today, widget=forms.DateInput(attrs={"type": "date"}))
 
+    def clean_template(self):
+        template = self.cleaned_data["template"]
+        if not template.plan.is_available():
+            raise ValidationError("This template's plan is not currently available. Choose another template.")
+        return template
+
 
 @internal_required
 def new_subscription(request):
@@ -110,9 +116,8 @@ def new_subscription(request):
     if request.method == "POST" and form.is_valid():
         d = form.cleaned_data
         sub = billing.create_from_template(d["template"], d["customer"], request.user, d["start_date"])
-        messages.success(request, f"{sub} created as Draft from “{d['template']}”. Move it through "
-                                  "Quotation → Confirmed → Active with the actions menu.")
-        return redirect(f"/admin/core/subscription/{sub.pk}/change/")
+        messages.success(request, f"{sub} created as Draft. Use the status buttons to send a quotation.")
+        return redirect("subscription_detail", pk=sub.pk)
     return render(request, "core/new_subscription.html", {"form": form})
 
 

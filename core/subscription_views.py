@@ -1,10 +1,15 @@
 """Internal subscription pages; lifecycle rules remain in billing."""
 from django.conf import settings
+from django.contrib import messages
+from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
+from django.db import transaction
 from django.db.models import Prefetch, Q
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import get_object_or_404, redirect, render
+from django.views.decorators.http import require_POST
 
 from accounts.permissions import internal_required
+from . import billing
 from .models import ZERO, Plan, Subscription, SubscriptionLine, money
 
 
@@ -49,7 +54,31 @@ def subscription_detail(request, pk):
     subtotal = sub.untaxed_total
     tax_total = sum((money(line.amount * line.tax.rate / 100) if line.tax else ZERO
                      for line in lines), ZERO)
+    labels = {"draft": "Return to draft", "quotation": "Send quotation", "confirmed": "Confirm",
+              "active": "Resume" if sub.status == "paused" else "Activate",
+              "paused": "Pause", "closed": "Close"}
+    actions = [(target, labels[target]) for target in sub.allowed_transitions()
+               if not (target == "paused" and not sub.plan.pausable)
+               and not (target == "closed" and sub.status == "active" and not sub.plan.closable)]
     return render(request, "core/subscription_detail.html", {
         "sub": sub, "lines": lines, "subtotal": subtotal, "tax_total": tax_total,
         "total": subtotal + tax_total, "currency": settings.CURRENCY,
+        "actions": actions, "can_renew": sub.plan.renewable and sub.status in ("active", "closed"),
     })
+
+
+@internal_required
+@require_POST
+def subscription_action(request, pk):
+    try:
+        with transaction.atomic():
+            sub = get_object_or_404(Subscription.objects.select_for_update(), pk=pk)
+            action = request.POST.get("action", "")
+            if action == "renew":
+                billing.renew(sub)
+            else:
+                billing.change_status(sub, action)
+        messages.success(request, f"{sub.number}: {'renewed' if action == 'renew' else sub.get_status_display()}.")
+    except ValidationError as exc:
+        messages.error(request, "; ".join(exc.messages))
+    return redirect("subscription_detail", pk=pk)

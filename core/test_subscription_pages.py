@@ -1,10 +1,12 @@
 from decimal import Decimal
+from datetime import timedelta
 
-from django.test import TestCase
+from django.test import Client, TestCase
 from django.urls import reverse
+from django.utils import timezone
 
 from accounts.models import User
-from .models import Plan, Product, ProductVariant, Subscription, SubscriptionLine, Tax
+from .models import Plan, Product, ProductVariant, QuotationTemplate, Subscription, SubscriptionLine, Tax
 
 
 class SubscriptionPagesTests(TestCase):
@@ -74,3 +76,72 @@ class SubscriptionPagesTests(TestCase):
         response = self.client.get(reverse("subscription_detail", args=[self.sub.pk]))
         self.assertContains(response, "No product lines")
         self.assertEqual(response.context["total"], Decimal("100.00"))
+
+    def test_create_page_access_rules(self):
+        self.assert_internal_page(reverse("new_subscription"))
+
+    def test_action_access_rules_and_post_only(self):
+        url = reverse("subscription_action", args=[self.sub.pk])
+        self.assertEqual(self.client.post(url, {"action": "quotation"}).status_code, 302)
+        self.client.force_login(self.customer)
+        self.assertEqual(self.client.post(url, {"action": "quotation"}).status_code, 403)
+        for user in (self.staff, self.admin):
+            self.client.force_login(user)
+            self.assertEqual(self.client.get(url).status_code, 405)
+        self.sub.refresh_from_db()
+        self.assertEqual(self.sub.status, "draft")
+        client = Client(enforce_csrf_checks=True)
+        client.force_login(self.staff)
+        self.assertEqual(client.post(url, {"action": "quotation"}).status_code, 403)
+
+    def test_lifecycle_errors_pause_resume_and_renew(self):
+        self.client.force_login(self.staff)
+        url = reverse("subscription_action", args=[self.sub.pk])
+        response = self.client.post(url, {"action": "active"}, follow=True)
+        self.assertContains(response, "Cannot move")
+        for status in ("quotation", "confirmed", "active"):
+            self.client.post(url, {"action": status})
+            self.sub.refresh_from_db()
+            self.assertEqual(self.sub.status, status)
+        self.assertContains(self.client.post(url, {"action": "paused"}, follow=True), "does not allow pausing")
+        self.plan.pausable = True
+        self.plan.save()
+        for status in ("paused", "active", "closed"):
+            self.client.post(url, {"action": status})
+            self.sub.refresh_from_db()
+            self.assertEqual(self.sub.status, status)
+        self.client.post(url, {"action": "renew"})
+        self.sub.refresh_from_db()
+        self.assertEqual(self.sub.status, "active")
+        self.assertIsNotNone(self.sub.expiry_date)
+
+    def test_plan_flags_hide_and_reject_actions(self):
+        self.plan.renewable = False
+        self.plan.closable = False
+        self.plan.save()
+        self.sub.status = "active"
+        self.sub.save()
+        self.client.force_login(self.staff)
+        response = self.client.get(reverse("subscription_detail", args=[self.sub.pk]))
+        for action in ("paused", "closed", "renew"):
+            self.assertNotContains(response, f'value="{action}"')
+            response = self.client.post(reverse("subscription_action", args=[self.sub.pk]), {"action": action}, follow=True)
+            self.assertContains(response, 'class="msg error"')
+        self.sub.refresh_from_db()
+        self.assertEqual(self.sub.status, "active")
+
+    def test_create_rejects_unavailable_template_plan(self):
+        template = QuotationTemplate.objects.create(name="Starter", plan=self.plan)
+        self.client.force_login(self.staff)
+        today = timezone.localdate()
+        data = {"customer": self.customer.pk, "template": template.pk, "start_date": today.isoformat()}
+        for start, end in ((today + timedelta(days=1), None), (today - timedelta(days=2), today - timedelta(days=1))):
+            self.plan.start_date, self.plan.end_date = start, end
+            self.plan.save()
+            self.assertContains(self.client.post(reverse("new_subscription"), data), "not currently available")
+            self.assertEqual(Subscription.objects.count(), 1)
+        self.plan.start_date, self.plan.end_date = today, today
+        self.plan.save()
+        response = self.client.post(reverse("new_subscription"), data)
+        created = Subscription.objects.latest("pk")
+        self.assertRedirects(response, reverse("subscription_detail", args=[created.pk]))
