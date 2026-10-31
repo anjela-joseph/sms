@@ -52,6 +52,7 @@ form p{margin:0 0 12px}label{display:block;font-size:13px;color:var(--muted);mar
     {% else %}
       <a href="{% url 'portal' %}">My account</a>
     {% endif %}
+    <a href="{% url 'profile' %}">Profile</a>
     <form method="post" action="{% url 'logout' %}" style="margin:0">{% csrf_token %}<button class="btn ghost" style="padding:4px 10px">Log out</button></form>
   {% else %}
     <a href="{% url 'login' %}">Log in</a><a href="{% url 'signup' %}">Sign up</a>
