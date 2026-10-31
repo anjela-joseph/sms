@@ -4,6 +4,7 @@ from django.urls import path
 
 from accounts import views as acc
 from core import views as core
+from core import finance_views as finance
 from core import subscription_views
 
 urlpatterns = [
@@ -26,6 +27,7 @@ urlpatterns = [
     path("subscriptions/<int:pk>/", subscription_views.subscription_detail, name="subscription_detail"),
     path("subscriptions/<int:pk>/action/", subscription_views.subscription_action, name="subscription_action"),
     path("invoices/<int:pk>/", core.invoice_detail, name="invoice_detail"),
+    path("invoices/", finance.invoice_list, name="invoice_list"),
     path("portal/", core.portal, name="portal"),
     path("portal/subscriptions/<int:pk>/<str:action>/", core.portal_action, name="portal_action"),
 ]

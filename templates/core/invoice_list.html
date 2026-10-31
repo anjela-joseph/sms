@@ -1,0 +1,22 @@
+{% extends "base.html" %}{% load humanize %}
+{% block title %}Invoices{% endblock %}
+{% block content %}
+<h1>Invoices</h1>
+<form method="get" class="card">
+  {{ form.non_field_errors }}
+  <div class="row">{% for field in form %}<div>{{ field.label_tag }}{{ field }}{{ field.errors }}</div>{% endfor %}</div>
+  <p class="muted">Dates filter invoice date. Outstanding means confirmed and not yet overdue.</p>
+  <button class="btn">Apply filters</button> <a class="btn ghost" href="{% url 'invoice_list' %}">Reset</a>
+</form>
+<div class="card" style="overflow-x:auto"><table>
+  <thead><tr><th>Invoice</th><th>Customer</th><th>Subscription / plan</th><th>Date</th><th>Due</th><th>Status</th><th class="n">Total</th><th class="n">Unpaid</th></tr></thead>
+  <tbody>{% for inv in page_obj %}<tr>
+    <td><a href="{% url 'invoice_detail' inv.pk %}">{{ inv.number }}</a></td>
+    <td>{{ inv.customer }}</td><td>{{ inv.subscription.number|default:'—' }}<br><span class="muted">{{ inv.subscription.plan.name }}</span></td>
+    <td>{{ inv.invoice_date|date:'d M Y' }}</td><td>{{ inv.due_date|date:'d M Y' }}</td>
+    <td>{% if inv.is_overdue %}<span class="badge overdue">Overdue</span>{% elif inv.status == 'confirmed' %}<span class="badge confirmed">Outstanding</span>{% else %}<span class="badge {{ inv.status }}">{{ inv.get_status_display }}</span>{% endif %}</td>
+    <td class="n">₹{{ inv.total|floatformat:2|intcomma }}</td><td class="n">{% if inv.status == 'cancelled' %}—{% else %}₹{{ inv.amount_due|floatformat:2|intcomma }}{% endif %}</td>
+  </tr>{% empty %}<tr><td colspan="8" class="muted">No invoices match these filters.</td></tr>{% endfor %}</tbody>
+</table></div>
+{% include "core/_pagination.html" %}
+{% endblock %}

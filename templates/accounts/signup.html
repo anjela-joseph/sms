@@ -1,3 +1,49 @@
 {% extends "base.html" %}{% block title %}Sign up{% endblock %}
-{% block content %}<div class="card narrow"><h1>Create your account</h1>
-<form method="post">{% csrf_token %}{{ form.as_p }}<button class="btn">Sign up</button></form></div>{% endblock %}
+{% block content %}
+<style>
+.auth{display:grid;grid-template-columns:1fr 1fr;max-width:900px;margin:30px auto;border-radius:12px;overflow:hidden;border:1px solid var(--line);background:var(--card)}
+.auth .side{background:linear-gradient(160deg,#1d2433,#3b5bdb);color:#fff;padding:36px}
+.auth .side h2{font-size:24px;margin:0 0 10px}.auth .side li{margin:8px 0;opacity:.9}
+.auth .main{padding:32px}
+.rules{list-style:none;padding:0;margin:-4px 0 14px;font-size:13px}
+.rules li{color:var(--muted)}.rules li::before{content:"○ "}
+.rules li.ok{color:var(--ok)}.rules li.ok::before{content:"✓ "}
+@media(max-width:700px){.auth{grid-template-columns:1fr}.auth .side{display:none}}
+</style>
+<div class="auth">
+  <div class="side">
+    <h2>Brightloop</h2>
+    <p>Your subscriptions, invoices and payments in one place.</p>
+    <ul><li>See every plan you're on</li><li>Download and pay invoices</li><li>Pause or renew anytime</li></ul>
+  </div>
+  <div class="main">
+    <h1>Create your account</h1>
+    <form method="post" novalidate>{% csrf_token %}
+      {{ form.non_field_errors }}
+      {% for field in form %}
+        <p>{{ field.label_tag }}{{ field }}{{ field.errors }}</p>
+        {% if field.name == "password1" %}
+        <ul class="rules" id="rules">
+          <li data-r="len">More than 8 characters</li>
+          <li data-r="up">An uppercase letter</li>
+          <li data-r="low">A lowercase letter</li>
+          <li data-r="sp">A special character</li>
+        </ul>
+        {% endif %}
+      {% endfor %}
+      <button class="btn" style="width:100%">Sign up</button>
+    </form>
+    <p class="muted" style="margin-top:14px">Already have an account? <a href="{% url 'login' %}">Log in</a></p>
+  </div>
+</div>
+<script>
+(function(){
+  var pw=document.getElementById("id_password1"); if(!pw) return;
+  var checks={len:function(v){return v.length>8},up:function(v){return /[A-Z]/.test(v)},
+              low:function(v){return /[a-z]/.test(v)},sp:function(v){return /[^A-Za-z0-9]/.test(v)}};
+  function update(){document.querySelectorAll("#rules li").forEach(function(li){
+    li.classList.toggle("ok",checks[li.dataset.r](pw.value));});}
+  pw.addEventListener("input",update); update();
+})();
+</script>
+{% endblock %}
