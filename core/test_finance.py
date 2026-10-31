@@ -5,7 +5,7 @@ from django.test import TestCase
 from django.utils import timezone
 
 from accounts.models import User
-from .models import Invoice, Plan, Subscription
+from .models import Discount, Invoice, Payment, Plan, Subscription
 
 
 class FinancePages(TestCase):
@@ -61,3 +61,36 @@ class FinancePages(TestCase):
     def test_customer_cannot_list_finances(self):
         self.client.force_login(self.customer)
         self.assertEqual(self.client.get("/invoices/").status_code, 403)
+
+    def test_payment_filters_and_totals_cover_all_pages(self):
+        Payment.objects.bulk_create([Payment(invoice=self.invoices["paid"], method="upi", amount=10, date=self.today) for _ in range(55)])
+        Payment.objects.create(invoice=self.invoices["paid"], method="bank", amount=20, date=self.today - timedelta(days=1))
+        response = self.client.get("/payments/", {"method": "upi", "date_from": self.today, "date_to": self.today})
+        self.assertEqual(response.context["total"], 550)
+        self.assertEqual(len(response.context["page_obj"]), 50)
+        self.assertEqual(response.context["page_obj"].paginator.count, 55)
+        self.assertEqual(self.client.get("/payments/").context["total"], 570)
+        self.assertTrue(self.client.get("/payments/", {"date_from": "bad"}).context["form"].errors)
+
+    def test_discount_create_edit_are_admin_only_and_keep_usage(self):
+        data = dict(name="Launch", discount_type="percent", value="10", min_purchase="0", min_quantity="0",
+                    start_date=str(self.today), usage_limit="2", is_active="on")
+        discount = Discount.objects.create(name="Existing", discount_type="percent", value=10,
+                                           start_date=self.today, times_used=1)
+        for url in ("/discounts/new/", f"/discounts/{discount.pk}/edit/"):
+            self.assertEqual(self.client.get(url).status_code, 403)
+            self.assertEqual(self.client.post(url, data).status_code, 403)
+        self.assertEqual(self.client.get("/discounts/").status_code, 200)
+        admin = User.objects.create_user("admin@finance.test", role="admin")
+        self.client.force_login(admin)
+        self.assertRedirects(self.client.post("/discounts/new/", data), "/discounts/")
+        self.assertRedirects(self.client.post(f"/discounts/{discount.pk}/edit/", {**data, "times_used": 0}), "/discounts/")
+        discount.refresh_from_db()
+        self.assertEqual(discount.times_used, 1)
+        for value in ("-1", "101", ""):
+            response = self.client.post("/discounts/new/", {**data, "value": value})
+            self.assertEqual(response.status_code, 200)
+            self.assertTrue(response.context["form"].errors)
+        self.client.force_login(self.customer)
+        for url in ("/discounts/", "/discounts/new/", "/payments/"):
+            self.assertEqual(self.client.get(url).status_code, 403)

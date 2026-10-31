@@ -101,7 +101,7 @@ def _discount_applies(d, lines, untaxed, qty, on):
         return False
     if untaxed < d.min_purchase or qty < d.min_quantity:
         return False
-    product_ids = set(d.products.values_list("id", flat=True))
+    product_ids = {product.pk for product in d.products.all()}
     if product_ids and not any(l["product_id"] in product_ids for l in lines):
         return False
     return True
@@ -109,7 +109,7 @@ def _discount_applies(d, lines, untaxed, qty, on):
 
 def _discount_amounts(d, lines):
     """Return {line_index: discount_amount}. Scope = chosen products, or whole subscription."""
-    product_ids = set(d.products.values_list("id", flat=True))
+    product_ids = {product.pk for product in d.products.all()}
     eligible = [i for i, l in enumerate(lines) if not product_ids or l["product_id"] in product_ids]
     base = sum((lines[i]["subtotal"] for i in eligible), ZERO)
     if base <= 0:
@@ -118,21 +118,29 @@ def _discount_amounts(d, lines):
         return {i: money(lines[i]["subtotal"] * d.value / 100) for i in eligible}
     # Fixed: spread across eligible lines by weight, never more than the base.
     total_off = min(d.value, base)
-    out, given = {}, ZERO
+    out, given, cumulative = {}, ZERO, ZERO
     for n, i in enumerate(eligible):
-        share = total_off - given if n == len(eligible) - 1 else money(total_off * lines[i]["subtotal"] / base)
+        cumulative += lines[i]["subtotal"]
+        share = money(total_off * cumulative / base) - given
         out[i] = share
         given += share
     return out
 
 
-def pick_discount(sub, lines, on):
+def pick_discount(sub, lines, on, lock=False):
     """The subscription's own discount if it qualifies, else the best automatic one."""
     untaxed = sum((l["subtotal"] for l in lines), ZERO)
     qty = sum(int(l["quantity"]) for l in lines if l["product_id"])
-    candidates = [sub.discount] if sub.discount_id else list(
-        Discount.objects.filter(is_active=True, start_date__lte=on)
-        .filter(Q(end_date__isnull=True) | Q(end_date__gte=on)).prefetch_related("products"))
+    candidates = Discount.objects.filter(
+        Q(pk=sub.discount_id) | (Q(is_active=True, start_date__lte=on)
+        & (Q(end_date__isnull=True) | Q(end_date__gte=on))))
+    if lock:
+        # Lock in the same order across workers, and read usage after obtaining the lock.
+        candidates = candidates.select_for_update()
+    candidates = list(candidates.order_by("pk").prefetch_related("products"))
+    assigned = next((d for d in candidates if d.pk == sub.discount_id), None)
+    if assigned and _discount_applies(assigned, lines, untaxed, qty, on):
+        return assigned
     best, best_amt = None, ZERO
     for d in candidates:
         if d and _discount_applies(d, lines, untaxed, qty, on):
@@ -160,11 +168,10 @@ def build_invoice(sub, period_start, confirm=None, today=None):
                           unit_price=l.unit_price, subtotal=l.amount,
                           tax_rate=l.tax.rate if l.tax else ZERO))
 
-    discount = pick_discount(sub, lines, today)
-    off = _discount_amounts(discount, lines) if discount else {}
-
     try:
         with transaction.atomic():
+            discount = pick_discount(sub, lines, today, lock=True)
+            off = _discount_amounts(discount, lines) if discount else {}
             inv = Invoice.objects.create(
                 subscription=sub, customer_id=sub.customer_id, invoice_date=today,
                 due_date=today + timedelta(days=sub.payment_terms),
@@ -190,7 +197,7 @@ def build_invoice(sub, period_start, confirm=None, today=None):
     except IntegrityError:
         if Invoice.objects.filter(subscription=sub, period_start=period_start).exists():
             return None
-        # Preserve the billing cursor on unexpected integrity errors.
+        # A different integrity error must roll back the billing cursor, not skip a period.
         raise
     return inv
 

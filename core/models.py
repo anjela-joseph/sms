@@ -134,9 +134,13 @@ class Discount(models.Model):
         return f"{self.name} (-{v})"
 
     def clean(self):
-        if self.discount_type == self.Type.PERCENT and not (0 < self.value <= 100):
+        if self.value is not None and self.value <= 0:
+            raise ValidationError({"value": "Discount value must be positive."})
+        if self.discount_type == self.Type.PERCENT and self.value is not None and self.value > 100:
             raise ValidationError({"value": "Percentage must be between 0 and 100."})
-        if self.end_date and self.end_date < self.start_date:
+        if self.min_purchase is not None and self.min_purchase < 0:
+            raise ValidationError({"min_purchase": "Minimum purchase cannot be negative."})
+        if self.end_date and self.start_date and self.end_date < self.start_date:
             raise ValidationError({"end_date": "End date is before start date."})
 
     def is_valid_on(self, d: date) -> bool:
@@ -372,4 +376,3 @@ class BillingRun(models.Model):
     error_subscription_ids = models.JSONField(default=list)
     error_message = models.CharField(max_length=255, blank=True)
     elapsed_seconds = models.FloatField(default=0)
-

@@ -1,0 +1,20 @@
+{% extends "base.html" %}{% load humanize %}
+{% block title %}Payments{% endblock %}
+{% block content %}
+<h1>Payments</h1>
+<form class="card" method="get">{{ form.non_field_errors }}
+  <div class="row">{% for field in form %}<div>{{ field.label_tag }}{{ field }}{{ field.errors }}</div>{% endfor %}
+  <div><button class="btn">Apply filters</button> <a href="{% url 'payment_list' %}">Reset</a></div></div>
+</form>
+<div class="card kpi"><div class="l">Total collected across all matching payments</div><div class="v">₹{{ total|floatformat:2|intcomma }}</div></div>
+<div class="grid">{% for label, amount in method_totals %}<div class="card"><div class="muted">{{ label }}</div>₹{{ amount|floatformat:2|intcomma }}</div>{% endfor %}</div>
+<div class="card" style="overflow-x:auto"><table>
+  <tr><th>Date</th><th>Invoice</th><th>Customer</th><th>Method</th><th>Recorded by</th><th class="n">Amount</th></tr>
+  {% for payment in page_obj %}<tr>
+    <td>{{ payment.date|date:'d M Y' }}</td><td><a href="{% url 'invoice_detail' payment.invoice_id %}">{{ payment.invoice.number }}</a></td>
+    <td>{{ payment.invoice.customer }}</td><td>{{ payment.get_method_display }}</td><td>{{ payment.recorded_by|default:'—' }}</td>
+    <td class="n">₹{{ payment.amount|floatformat:2|intcomma }}</td>
+  </tr>{% empty %}<tr><td colspan="6" class="muted">No payments match these filters.</td></tr>{% endfor %}
+</table></div>
+{% include 'core/_pagination.html' %}
+{% endblock %}
