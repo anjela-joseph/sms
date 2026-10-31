@@ -1,30 +1,32 @@
 {% extends "base.html" %}{% block title %}Log in{% endblock %}
 {% block content %}
 <style>
-.auth{display:grid;grid-template-columns:1fr 1fr;max-width:1100px;margin:48px auto;border-radius:12px;overflow:hidden;border:1px solid var(--line);background:var(--card)}
-.auth .side{background:linear-gradient(160deg,#1d2433,#3b5bdb);color:#fff;padding:36px}
-.auth .side h2{font-size:24px;margin:0 0 10px}.auth .side li{margin:8px 0;opacity:.9}
-.auth .main{padding:32px}
-@media(max-width:700px){.auth{grid-template-columns:1fr}.auth .side{display:none}}
+.auth-page{min-height:100vh;background:#f6f9fc;display:flex;flex-direction:column;align-items:center;padding:56px 16px}
+.auth-page .wordmark{font-size:34px;margin-bottom:32px}
+.auth-box{width:100%;max-width:440px;background:#fff;border-radius:8px;box-shadow:0 15px 35px rgba(60,66,87,.08),0 5px 15px rgba(0,0,0,.06);padding:40px 44px}
+.auth-box h1{font-size:22px;font-weight:600;letter-spacing:-.2px;margin:0 0 24px}
+.auth-box .btn{width:100%;height:38px;margin-top:6px}
+.auth-foot{margin-top:24px;color:var(--muted);font-size:14px;text-align:center}
+.rules{list-style:none;padding:0;margin:-4px 0 14px;font-size:13px}
+.rules li{color:var(--muted)}.rules li::before{content:"○ ";font-size:11px}
+.rules li.ok{color:var(--ok)}.rules li.ok::before{content:"✓ "}
+@media(max-width:500px){.auth-box{padding:28px 22px}}
 </style>
-<div class="auth">
-  <div class="side">
-    <h2>Brightloop</h2>
-    <p>Welcome back.</p>
-    <ul><li>Check your subscriptions</li><li>View and pay invoices</li><li>Manage your plan anytime</li></ul>
-  </div>
-  <div class="main">
-    <h1>Log in</h1>
-    {% if form.errors %}<div class="msg error">That email and password don't match. Please try again.</div>{% endif %}
+<div class="auth-page">
+  <a class="wordmark" href="{% url 'home' %}">brightloop</a>
+  <div class="auth-box">
+    <h1>Log in to your account</h1>
+    {% if form.errors %}<div class="msg error">The email or password is incorrect.</div>{% endif %}
     <form method="post">{% csrf_token %}
       <p><label for="id_username">Email</label>
         <input type="email" name="username" id="id_username" value="{{ form.username.value|default:'' }}" autofocus required></p>
       <p><label for="id_password">Password</label>
         <input type="password" name="password" id="id_password" required></p>
       <input type="hidden" name="next" value="{{ next }}">
-      <button class="btn" style="width:100%">Log in</button>
+      <button class="btn">Log in</button>
     </form>
-    <p class="muted" style="margin-top:14px"><a href="{% url 'password_reset' %}">Forgot password?</a> · New here? <a href="{% url 'signup' %}">Create an account</a></p>
+    <p class="muted" style="margin:16px 0 0;text-align:center"><a href="{% url 'password_reset' %}">Forgot your password?</a></p>
   </div>
+  <p class="auth-foot">Don't have an account? <a href="{% url 'signup' %}">Sign up</a></p>
 </div>
 {% endblock %}

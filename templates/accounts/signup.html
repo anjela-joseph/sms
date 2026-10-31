@@ -1,48 +1,45 @@
 {% extends "base.html" %}{% block title %}Sign up{% endblock %}
 {% block content %}
 <style>
-.auth{display:grid;grid-template-columns:1fr 1fr;max-width:900px;margin:30px auto;border-radius:12px;overflow:hidden;border:1px solid var(--line);background:var(--card)}
-.auth .side{background:linear-gradient(160deg,#1d2433,#3b5bdb);color:#fff;padding:36px}
-.auth .side h2{font-size:24px;margin:0 0 10px}.auth .side li{margin:8px 0;opacity:.9}
-.auth .main{padding:32px}
+.auth-page{min-height:100vh;background:#f6f9fc;display:flex;flex-direction:column;align-items:center;padding:56px 16px}
+.auth-page .wordmark{font-size:34px;margin-bottom:32px}
+.auth-box{width:100%;max-width:440px;background:#fff;border-radius:8px;box-shadow:0 15px 35px rgba(60,66,87,.08),0 5px 15px rgba(0,0,0,.06);padding:40px 44px}
+.auth-box h1{font-size:22px;font-weight:600;letter-spacing:-.2px;margin:0 0 24px}
+.auth-box .btn{width:100%;height:38px;margin-top:6px}
+.auth-foot{margin-top:24px;color:var(--muted);font-size:14px;text-align:center}
 .rules{list-style:none;padding:0;margin:-4px 0 14px;font-size:13px}
-.rules li{color:var(--muted)}.rules li::before{content:"○ "}
+.rules li{color:var(--muted)}.rules li::before{content:"○ ";font-size:11px}
 .rules li.ok{color:var(--ok)}.rules li.ok::before{content:"✓ "}
-@media(max-width:700px){.auth{grid-template-columns:1fr}.auth .side{display:none}}
+@media(max-width:500px){.auth-box{padding:28px 22px}}
 </style>
-<div class="auth">
-  <div class="side">
-    <h2>Brightloop</h2>
-    <p>Your subscriptions, invoices and payments in one place.</p>
-    <ul><li>See every plan you're on</li><li>Download and pay invoices</li><li>Pause or renew anytime</li></ul>
-  </div>
-  <div class="main">
+<div class="auth-page">
+  <a class="wordmark" href="{% url 'home' %}">brightloop</a>
+  <div class="auth-box">
     <h1>Create your account</h1>
     <form method="post" novalidate>{% csrf_token %}
       {{ form.non_field_errors }}
       {% for field in form %}
-        <p>{{ field.label_tag }}{{ field }}{{ field.errors }}</p>
+        <p><label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{{ field.errors }}</p>
         {% if field.name == "password1" %}
         <ul class="rules" id="rules">
           <li data-r="len">More than 8 characters</li>
-          <li data-r="up">An uppercase letter</li>
-          <li data-r="low">A lowercase letter</li>
-          <li data-r="sp">A special character</li>
+          <li data-r="up">One uppercase letter</li>
+          <li data-r="low">One lowercase letter</li>
+          <li data-r="sp">One special character</li>
         </ul>
         {% endif %}
       {% endfor %}
-      <button class="btn" style="width:100%">Sign up</button>
+      <button class="btn">Create account</button>
     </form>
-    <p class="muted" style="margin-top:14px">Already have an account? <a href="{% url 'login' %}">Log in</a></p>
   </div>
+  <p class="auth-foot">Already have an account? <a href="{% url 'login' %}">Log in</a></p>
 </div>
 <script>
 (function(){
   var pw=document.getElementById("id_password1"); if(!pw) return;
   var checks={len:function(v){return v.length>8},up:function(v){return /[A-Z]/.test(v)},
               low:function(v){return /[a-z]/.test(v)},sp:function(v){return /[^A-Za-z0-9]/.test(v)}};
-  function update(){document.querySelectorAll("#rules li").forEach(function(li){
-    li.classList.toggle("ok",checks[li.dataset.r](pw.value));});}
+  function update(){document.querySelectorAll("#rules li").forEach(function(li){li.classList.toggle("ok",checks[li.dataset.r](pw.value));});}
   pw.addEventListener("input",update); update();
 })();
 </script>

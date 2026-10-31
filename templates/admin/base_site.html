@@ -1,0 +1,58 @@
+{% extends "admin/base.html" %}
+
+{% block title %}{% if subtitle %}{{ subtitle }} | {% endif %}{{ title }} · Brightloop{% endblock %}
+
+{% block dark-mode-vars %}{% endblock %}
+
+{% block extrastyle %}{{ block.super }}
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Narrow:wght@500;600&family=Inter+Tight:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root, html[data-theme="light"], html[data-theme="dark"]{
+  --primary:#3f7d5c;--secondary:#1a1f36;--accent:#3f7d5c;--primary-fg:#fff;
+  --body-fg:#30313d;--body-bg:#fff;--body-quiet-color:#687385;--body-medium-color:#30313d;--body-loud-color:#1a1f36;
+  --header-color:#30313d;--header-branding-color:#1a1f36;--header-bg:#fff;--header-link-color:#30313d;
+  --breadcrumbs-fg:#687385;--breadcrumbs-link-fg:#3f7d5c;--breadcrumbs-bg:#fff;
+  --link-fg:#3f7d5c;--link-hover-color:#1a1f36;--link-selected-fg:#3f7d5c;
+  --hairline-color:#ebeef1;--border-color:#d5dbe1;--darkened-bg:#f6f8fa;--selected-bg:#eef5f0;--selected-row:#eef5f0;
+  --button-fg:#fff;--button-bg:#3f7d5c;--button-hover-bg:#33684c;--default-button-bg:#3f7d5c;--default-button-hover-bg:#33684c;
+  --close-button-bg:#687385;--close-button-hover-bg:#30313d;--object-tools-fg:#fff;--object-tools-bg:#3f7d5c;--object-tools-hover-bg:#33684c;
+  --message-success-bg:#ebfbe0;--message-warning-bg:#fcedb9;--message-error-bg:#fff0f4;
+  --font-family-primary:"Inter Tight",-apple-system,"Segoe UI",system-ui,sans-serif;
+}
+body{-webkit-font-smoothing:antialiased;font-size:14px}
+#header{height:auto!important;min-height:60px;padding:12px 32px!important;box-sizing:border-box;border-bottom:1px solid #ebeef1;align-items:center!important}
+#branding #site-name{text-transform:none;font-size:inherit;margin:0}
+#site-name a{display:inline-flex;align-items:baseline;gap:12px}
+#site-name .wordmark{font-family:"Arial Narrow","Archivo Narrow","Roboto Condensed",sans-serif;font-weight:500;font-size:27px;letter-spacing:-.6px;color:#1a1f36;line-height:1}
+#site-name .tag{font-size:14px;font-weight:500;color:#687385}
+#user-tools{text-transform:none;letter-spacing:0;font-size:14px;font-weight:400;color:#687385}
+#user-tools strong{color:#1a1f36;font-weight:600}#user-tools .sep{color:#d5dbe1;margin:0 10px}
+#user-tools a{border-bottom:0!important;color:#30313d}#user-tools a:hover{color:#3f7d5c}
+#logout-form button{text-transform:none!important;letter-spacing:0;font-size:14px;border-bottom:0!important;color:#30313d}#logout-form button:hover{color:#3f7d5c}
+#container a,#container a:link,#container a:visited,#container a:hover,#container a:focus{text-decoration:none!important}
+#content a:hover,#changelist-filter a:hover,.breadcrumbs a:hover{color:#1a1f36}
+div.breadcrumbs{border-bottom:1px solid #ebeef1;padding:10px 32px;font-size:13px}
+#content{padding:24px 32px}
+h1{font-size:26px!important;font-weight:700;letter-spacing:-.3px;color:#1a1f36}
+.module,#changelist-filter,fieldset.module{background:#fff;border:1px solid #ebeef1;border-radius:8px;overflow:hidden}
+.module h2,.module caption,.inline-group h2,#changelist-filter h2{background:#fff;color:#1a1f36;font-weight:600;font-size:14px;text-transform:none;letter-spacing:0;border-bottom:1px solid #ebeef1}
+thead th,tfoot td{background:#fff;color:#687385;text-transform:none;font-size:12px;font-weight:500;letter-spacing:0}
+tr:hover td{background:#f6f8fa}
+input,select,textarea{border-radius:6px!important;border-color:#d5dbe1!important}
+input:focus,select:focus,textarea:focus{border-color:#3f7d5c!important;box-shadow:0 0 0 3px rgba(63,125,92,.2);outline:none}
+.button,input[type=submit],input[type=button],.submit-row input,.submit-row a,a.button,.object-tools a,.selector-chooseall,.selector-clearall{border-radius:6px!important;text-transform:none!important;letter-spacing:0!important;font-weight:600}
+ul.messagelist li{border-radius:6px}
+.theme-toggle{display:none}
+</style>
+{% endblock %}
+
+{% block branding %}
+<div id="site-name"><a href="{% url 'admin:index' %}"><span class="wordmark">brightloop</span><span class="tag">Back office</span></a></div>
+{% endblock %}
+
+{% block welcome-msg %}Welcome, <strong>{% firstof user.first_name user.email %}</strong><span class="sep">|</span>{% endblock %}
+
+{% block nav-global %}{% endblock %}
+
+{% block nav-sidebar %}{% endblock %}
