@@ -1,0 +1,20 @@
+{% extends "base.html" %}{% block title %}My profile{% endblock %}
+{% block content %}
+<div class="card" style="max-width:640px;margin:24px auto">
+  <h1>My profile</h1>
+  <p class="muted">These details appear on your invoices.</p>
+  <p><label>Email (used to log in)</label><input value="{{ user.email }}" disabled></p>
+  <form method="post">{% csrf_token %}
+    {{ form.non_field_errors }}
+    <div class="row">
+      <p>{{ form.first_name.label_tag }}{{ form.first_name }}{{ form.first_name.errors }}</p>
+      <p>{{ form.last_name.label_tag }}{{ form.last_name }}{{ form.last_name.errors }}</p>
+    </div>
+    <p>{{ form.company.label_tag }}{{ form.company }}{{ form.company.errors }}</p>
+    <p>{{ form.phone.label_tag }}{{ form.phone }}{{ form.phone.errors }}</p>
+    <p>{{ form.address.label_tag }}{{ form.address }}{{ form.address.errors }}</p>
+    <button class="btn">Save changes</button>
+  </form>
+  <p class="muted" style="margin-top:14px">Want a new password? <a href="{% url 'password_reset' %}">Send me a reset link</a>.</p>
+</div>
+{% endblock %}
