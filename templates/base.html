@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{% block title %}Brightloop{% endblock %} · Brightloop</title>
+<style>
+:root{--ink:#1d2433;--muted:#667085;--line:#e4e7ec;--bg:#f6f7f9;--card:#fff;--brand:#3b5bdb;--ok:#2e7d32;--warn:#b26a00;--bad:#c62828}
+*{box-sizing:border-box}body{margin:0;font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--ink);background:var(--bg)}
+a{color:var(--brand);text-decoration:none}a:hover{text-decoration:underline}
+header{background:var(--ink);color:#fff;padding:0 24px;display:flex;align-items:center;gap:20px;height:56px;flex-wrap:wrap}
+header .logo{font-weight:700;letter-spacing:.3px;color:#fff;margin-right:auto}header a{color:#cfd6e4}
+main{max-width:1180px;margin:0 auto;padding:24px 16px}
+h1{font-size:22px;margin:0 0 16px}h2{font-size:16px;margin:0 0 12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px;margin-bottom:16px}
+.grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+.kpi .v{font-size:24px;font-weight:700}.kpi .l{color:var(--muted);font-size:13px}
+table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);font-size:14px}
+th{color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.4px}td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+.btn{display:inline-block;border:1px solid var(--brand);background:var(--brand);color:#fff;border-radius:7px;padding:7px 14px;font:inherit;cursor:pointer}
+.btn.ghost{background:#fff;color:var(--brand)}.btn.danger{background:#fff;color:var(--bad);border-color:var(--bad)}
+.btn:hover{text-decoration:none;filter:brightness(.95)}
+input,select,textarea{font:inherit;padding:7px 9px;border:1px solid #cdd2da;border-radius:7px;width:100%}
+form p{margin:0 0 12px}label{display:block;font-size:13px;color:var(--muted);margin-bottom:3px}
+.helptext,.muted{color:var(--muted);font-size:13px}.errorlist{color:var(--bad);margin:4px 0;padding-left:18px;font-size:13px}
+.msg{padding:10px 14px;border-radius:8px;margin-bottom:14px;background:#e8f0fe}.msg.error{background:#fdecea;color:var(--bad)}.msg.success{background:#e6f4ea;color:var(--ok)}
+.badge{padding:2px 8px;border-radius:99px;font-size:12px;font-weight:600;background:#eef0f3}
+.badge.active,.badge.paid{background:#e6f4ea;color:var(--ok)}.badge.confirmed{background:#e8f0fe;color:var(--brand)}
+.badge.overdue{background:#fdecea;color:var(--bad)}.badge.paused,.badge.quotation{background:#fff4e0;color:var(--warn)}
+.narrow{max-width:420px;margin:40px auto}.row{display:flex;gap:10px;align-items:end;flex-wrap:wrap}.row>*{flex:1;min-width:140px}
+.bars{display:flex;gap:10px;align-items:flex-end;height:180px;padding-top:10px}.bars .m{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;height:100%;justify-content:flex-end}
+.bars .pair{display:flex;gap:3px;align-items:flex-end;height:100%;width:100%;justify-content:center}.bars .b{width:40%;border-radius:4px 4px 0 0}
+.b.billed{background:#c5d0f5}.b.paid{background:var(--brand)}.legend span{display:inline-block;width:10px;height:10px;border-radius:2px;margin:0 4px 0 12px}
+@media print{header,.noprint{display:none}body{background:#fff}.card{border:0}}
+</style>
+</head>
+<body>
+<header>
+  <a class="logo" href="{% url 'home' %}">Brightloop</a>
+  {% if user.is_authenticated %}
+    {% if user.is_internal %}
+      <a href="{% url 'dashboard' %}">Dashboard</a>
+      <a href="{% url 'new_subscription' %}">New subscription</a>
+      <a href="/admin/core/subscription/">Subscriptions</a>
+      <a href="/admin/core/invoice/">Invoices</a>
+      <a href="/admin/">Back office</a>
+      {% if user.is_admin %}<a href="{% url 'add_staff' %}">Add staff</a>{% endif %}
+    {% else %}
+      <a href="{% url 'portal' %}">My account</a>
+    {% endif %}
+    <form method="post" action="{% url 'logout' %}" style="margin:0">{% csrf_token %}<button class="btn ghost" style="padding:4px 10px">Log out</button></form>
+  {% else %}
+    <a href="{% url 'login' %}">Log in</a><a href="{% url 'signup' %}">Sign up</a>
+  {% endif %}
+</header>
+<main>
+  {% for m in messages %}<div class="msg {{ m.tags }}">{{ m }}</div>{% endfor %}
+  {% block content %}{% endblock %}
+</main>
+</body>
+</html>

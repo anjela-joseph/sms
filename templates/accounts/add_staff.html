@@ -1,0 +1,4 @@
+{% extends "base.html" %}{% block title %}Add staff{% endblock %}
+{% block content %}<div class="card narrow"><h1>Add a staff member</h1>
+<p class="muted">Only admins can see this page.</p>
+<form method="post">{% csrf_token %}{{ form.as_p }}<button class="btn">Add staff</button></form></div>{% endblock %}

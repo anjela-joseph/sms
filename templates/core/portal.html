@@ -1,0 +1,28 @@
+{% extends "base.html" %}{% load humanize %}{% block title %}My account{% endblock %}
+{% block content %}
+<h1>Hello {{ user.first_name|default:user.email }}</h1>
+<div class="grid"><div class="card kpi"><div class="l">Amount due</div><div class="v">₹{{ due|floatformat:2|intcomma }}</div></div>
+<div class="card kpi"><div class="l">Subscriptions</div><div class="v">{{ subs|length }}</div></div></div>
+<div class="card"><h2>My subscriptions</h2><table>
+  <tr><th>Number</th><th>Plan</th><th>Lines</th><th>Next bill</th><th>Expires</th><th>Status</th><th></th></tr>
+  {% for s in subs %}<tr><td>{{ s.number }}</td><td>{{ s.plan }}</td>
+    <td>{% for l in s.lines.all %}{{ l.quantity }} × {{ l.description }}{% if not forloop.last %}, {% endif %}{% endfor %}</td>
+    <td>{{ s.next_billing_date|date:"d M Y"|default:"–" }}</td><td>{{ s.expiry_date|date:"d M Y"|default:"–" }}</td>
+    <td><span class="badge {{ s.status }}">{{ s.get_status_display }}</span></td>
+    <td style="white-space:nowrap">
+      {% if s.status == "active" and s.plan.pausable %}<form method="post" action="{% url 'portal_action' s.pk 'pause' %}" style="display:inline">{% csrf_token %}<button class="btn ghost">Pause</button></form>{% endif %}
+      {% if s.status == "paused" %}<form method="post" action="{% url 'portal_action' s.pk 'resume' %}" style="display:inline">{% csrf_token %}<button class="btn ghost">Resume</button></form>{% endif %}
+      {% if s.plan.renewable and s.status == "active" or s.plan.renewable and s.status == "closed" %}<form method="post" action="{% url 'portal_action' s.pk 'renew' %}" style="display:inline">{% csrf_token %}<button class="btn ghost">Renew</button></form>{% endif %}
+      {% if s.status == "active" and s.plan.closable %}<form method="post" action="{% url 'portal_action' s.pk 'close' %}" style="display:inline">{% csrf_token %}<button class="btn danger">Cancel</button></form>{% endif %}
+    </td></tr>
+  {% empty %}<tr><td colspan="7" class="muted">No subscriptions yet.</td></tr>{% endfor %}</table></div>
+<div class="card"><h2>My invoices</h2><table>
+  <tr><th>Invoice</th><th>Date</th><th>Due</th><th class="n">Total</th><th class="n">Due</th><th>Status</th></tr>
+  {% for inv in invoices %}<tr><td><a href="{% url 'invoice_detail' inv.pk %}">{{ inv.number }}</a></td><td>{{ inv.invoice_date|date:"d M Y" }}</td>
+    <td>{{ inv.due_date|date:"d M Y" }}</td><td class="n">₹{{ inv.total|intcomma }}</td><td class="n">₹{{ inv.amount_due|intcomma }}</td>
+    <td><span class="badge {% if inv.is_overdue %}overdue{% else %}{{ inv.status }}{% endif %}">{% if inv.is_overdue %}Overdue{% else %}{{ inv.get_status_display }}{% endif %}</span></td></tr>
+  {% empty %}<tr><td colspan="6" class="muted">No invoices yet.</td></tr>{% endfor %}</table>
+  {% if invoices.has_other_pages %}<p class="muted">Page {{ invoices.number }} of {{ invoices.paginator.num_pages }}
+    {% if invoices.has_previous %}<a href="?page={{ invoices.previous_page_number }}">← Prev</a>{% endif %}
+    {% if invoices.has_next %}<a href="?page={{ invoices.next_page_number }}">Next →</a>{% endif %}</p>{% endif %}</div>
+{% endblock %}

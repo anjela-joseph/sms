@@ -1,0 +1,37 @@
+{% extends "base.html" %}{% load humanize %}{% block title %}Dashboard{% endblock %}
+{% block content %}
+<div class="row" style="align-items:center;margin-bottom:16px">
+  <h1 style="margin:0">Finance dashboard</h1>
+  <form method="post" action="{% url 'run_billing' %}" style="flex:none;min-width:0;text-align:right">{% csrf_token %}
+    <button class="btn" style="white-space:nowrap" title="{{ due_now }} subscription(s) due">Run billing ({{ due_now|intcomma }} due)</button></form>
+</div>
+<form class="card row" method="get">
+  <div><label>From</label><input type="date" name="from" value="{{ d_from|date:'Y-m-d' }}"></div>
+  <div><label>To</label><input type="date" name="to" value="{{ d_to|date:'Y-m-d' }}"></div>
+  <div><label>Plan</label><select name="plan"><option value="">All plans</option>
+    {% for p in plans %}<option value="{{ p.id }}" {% if plan_id == p.id|stringformat:'s' %}selected{% endif %}>{{ p }}</option>{% endfor %}</select></div>
+  <div style="flex:none;min-width:0"><button class="btn">Apply</button></div>
+</form>
+<div class="grid">
+  <div class="card kpi"><div class="l">Active subscriptions</div><div class="v">{{ active|intcomma }}</div><div class="muted">of {{ total_subs|intcomma }} total</div></div>
+  <div class="card kpi"><div class="l">Revenue collected</div><div class="v">₹{{ kpi.revenue|floatformat:0|intcomma }}</div><div class="muted">payments in period</div></div>
+  <div class="card kpi"><div class="l">Invoiced</div><div class="v">₹{{ kpi.invoiced|floatformat:0|intcomma }}</div><div class="muted">in period</div></div>
+  <div class="card kpi"><div class="l">Outstanding (not yet due)</div><div class="v">₹{{ kpi.outstanding|floatformat:0|intcomma }}</div></div>
+  <div class="card kpi"><div class="l">Overdue</div><div class="v" style="color:var(--bad)">₹{{ kpi.overdue|floatformat:0|intcomma }}</div><div class="muted">{{ kpi.overdue_n|intcomma }} invoices · <a href="/admin/core/invoice/?due=overdue">chase</a></div></div>
+</div>
+<div class="grid" style="grid-template-columns:2fr 1fr">
+  <div class="card"><h2>Billed vs collected <span class="legend muted"><span style="background:#c5d0f5"></span>billed<span style="background:var(--brand)"></span>collected</span></h2>
+    <div class="bars">{% for m in chart %}<div class="m"><div class="pair">
+      <div class="b billed" style="height:{{ m.billed_pct }}%" title="Billed ₹{{ m.billed|floatformat:0|intcomma }}"></div>
+      <div class="b paid" style="height:{{ m.paid_pct }}%" title="Collected ₹{{ m.paid|floatformat:0|intcomma }}"></div></div>
+      <div class="muted" style="font-size:11px">{{ m.label }}</div></div>{% endfor %}</div></div>
+  <div class="card"><h2>Subscriptions by status</h2><table>
+    {% for label, n in status_rows %}<tr><td>{{ label }}</td><td class="n">{{ n|intcomma }}</td></tr>{% endfor %}</table></div>
+</div>
+<div class="card"><h2>Most overdue invoices</h2><table>
+  <tr><th>Invoice</th><th>Customer</th><th>Due date</th><th class="n">Amount due</th></tr>
+  {% for inv in overdue %}<tr><td><a href="{% url 'invoice_detail' inv.pk %}">{{ inv.number }}</a></td><td>{{ inv.customer }}</td>
+  <td>{{ inv.due_date|date:"d M Y" }}</td><td class="n">₹{{ inv.due|floatformat:2|intcomma }}</td></tr>
+  {% empty %}<tr><td colspan="4" class="muted">Nothing overdue.</td></tr>{% endfor %}</table></div>
+<p class="muted">Page computed in {{ elapsed_ms }} ms.</p>
+{% endblock %}

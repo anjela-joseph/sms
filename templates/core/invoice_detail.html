@@ -1,0 +1,46 @@
+{% extends "base.html" %}{% load humanize %}{% block title %}{{ inv.number }}{% endblock %}
+{% block content %}
+<div class="row noprint" style="margin-bottom:12px;align-items:center">
+  <div><a href="{% if user.is_internal %}/admin/core/invoice/{% else %}{% url 'portal' %}{% endif %}">← Back</a></div>
+  <div style="flex:none;min-width:0;white-space:nowrap;display:flex;gap:8px">
+    {% if user.is_internal %}
+      {% if inv.status == "draft" %}<form method="post">{% csrf_token %}<button class="btn" name="action" value="confirm">Confirm</button></form>{% endif %}
+      {% if inv.status != "draft" and inv.status != "cancelled" %}<form method="post">{% csrf_token %}<button class="btn ghost" name="action" value="send">Send by email</button></form>{% endif %}
+      {% if inv.status == "draft" or inv.status == "confirmed" and not inv.amount_paid %}<form method="post">{% csrf_token %}<button class="btn danger" name="action" value="cancel">Cancel</button></form>{% endif %}
+    {% endif %}
+    <button class="btn ghost" onclick="window.print()">Print</button>
+  </div>
+</div>
+<div class="card">
+  <div class="row" style="align-items:start">
+    <div><h1>Invoice {{ inv.number }}</h1>
+      <span class="badge {% if inv.is_overdue %}overdue{% else %}{{ inv.status }}{% endif %}">{% if inv.is_overdue %}Overdue{% else %}{{ inv.get_status_display }}{% endif %}</span>
+      {% if inv.sent_at %}<span class="muted"> · sent {{ inv.sent_at|date:"d M Y" }}</span>{% endif %}</div>
+    <div style="text-align:right"><b>Brightloop Software</b><br><span class="muted">billing@brightloop.test</span></div>
+  </div>
+  <div class="grid" style="margin:18px 0">
+    <div><div class="muted">Billed to</div><b>{{ inv.customer.company|default:inv.customer.get_full_name }}</b><br>{{ inv.customer.email }}<br>{{ inv.customer.address|linebreaksbr }}</div>
+    <div><div class="muted">Subscription</div>{{ inv.subscription }} · {{ inv.subscription.plan }}<br><span class="muted">Period {{ inv.period_start|date:"d M Y" }} – {{ inv.period_end|date:"d M Y" }}</span></div>
+    <div><div class="muted">Invoice date / due</div>{{ inv.invoice_date|date:"d M Y" }} / <b>{{ inv.due_date|date:"d M Y" }}</b></div>
+  </div>
+  <table>
+    <tr><th>Description</th><th class="n">Qty</th><th class="n">Unit price</th><th class="n">Discount</th><th class="n">Tax</th><th class="n">Amount</th></tr>
+    {% for l in lines %}<tr><td>{{ l.description }}</td><td class="n">{{ l.quantity|floatformat:0 }}</td><td class="n">{{ l.unit_price|intcomma }}</td>
+      <td class="n">{% if l.discount %}−{{ l.discount|intcomma }}{% endif %}</td><td class="n">{{ l.tax_rate|floatformat:0 }}% · {{ l.tax_amount|intcomma }}</td><td class="n">{{ l.total|intcomma }}</td></tr>{% endfor %}
+    <tr><td colspan="5" class="n">Untaxed</td><td class="n">₹{{ inv.untaxed_amount|intcomma }}</td></tr>
+    {% if inv.discount_amount %}<tr><td colspan="5" class="n">Discount</td><td class="n">−₹{{ inv.discount_amount|intcomma }}</td></tr>{% endif %}
+    <tr><td colspan="5" class="n">Tax</td><td class="n">₹{{ inv.tax_amount|intcomma }}</td></tr>
+    <tr><td colspan="5" class="n"><b>Total</b></td><td class="n"><b>₹{{ inv.total|intcomma }}</b></td></tr>
+    <tr><td colspan="5" class="n">Paid</td><td class="n">₹{{ inv.amount_paid|intcomma }}</td></tr>
+    <tr><td colspan="5" class="n"><b>Amount due</b></td><td class="n"><b>₹{{ inv.amount_due|intcomma }}</b></td></tr>
+  </table>
+</div>
+<div class="grid noprint">
+  <div class="card"><h2>Payments</h2><table><tr><th>Date</th><th>Method</th><th>Note</th><th class="n">Amount</th></tr>
+    {% for p in payments %}<tr><td>{{ p.date|date:"d M Y" }}</td><td>{{ p.get_method_display }}</td><td>{{ p.note }}</td><td class="n">₹{{ p.amount|intcomma }}</td></tr>
+    {% empty %}<tr><td colspan="4" class="muted">No payments yet.</td></tr>{% endfor %}</table></div>
+  {% if user.is_internal and inv.status == "confirmed" %}
+  <div class="card"><h2>Record a payment</h2><form method="post">{% csrf_token %}{{ pay_form.as_p }}
+    <button class="btn" name="action" value="pay">Record payment</button></form></div>{% endif %}
+</div>
+{% endblock %}
