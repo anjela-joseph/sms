@@ -1,0 +1,37 @@
+{% extends "base.html" %}{% load humanize %}
+{% block title %}Billing run {{ run.pk }}{% endblock %}
+{% block content %}
+<h1>Billing run #{{ run.pk }}</h1>
+<div class="card">
+  <h2>{{ run.get_status_display }}</h2>
+  {% if run.status == 'queued' or run.status == 'running' %}
+    <p>Billing is processing in the background. This page refreshes every two seconds.</p>
+    <script>setTimeout(function () { window.location.reload(); }, 2000);</script>
+    <p class="muted">If the worker was interrupted, you can safely start another billing run from the dashboard.</p>
+  {% elif run.status == 'failed' %}
+    <p class="errorlist">{{ run.error_message }}</p>
+    <p>Retry this job: <code>python manage.py process_billing_run {{ run.pk }}</code></p>
+  {% else %}
+    <div class="grid">
+      <div class="kpi"><div class="v">{{ created_count|intcomma }}</div><div class="l">Invoices created</div></div>
+      <div class="kpi"><div class="v">{{ run.subscriptions|intcomma }}</div><div class="l">Due subscriptions processed</div></div>
+      <div class="kpi"><div class="v">{{ error_count }}</div><div class="l">Subscriptions with errors</div></div>
+    </div>
+    <p class="muted">Finished in {{ run.elapsed_seconds|floatformat:2 }} seconds.</p>
+    {% if created_count == 0 and error_count == 0 %}<p class="msg success">0 invoices created. No unbilled periods were due.</p>{% endif %}
+    {% if error_count %}<p class="errorlist">Failed subscription IDs: {{ run.error_subscription_ids|join:', ' }}. Their billing dates were preserved; check the worker logs and retry.</p>{% endif %}
+    <form method="post" action="{% url 'run_billing' %}">{% csrf_token %}<button class="btn">Run billing again</button></form>
+    <p class="muted">A second run creates 0 invoices when no new periods have become due.</p>
+  {% endif %}
+  <a href="{% url 'dashboard' %}">Back to dashboard</a>
+</div>
+<div class="card"><table>
+  <tr><th>Invoice</th><th>Subscription</th><th>Customer</th><th>Period</th><th class="n">Total</th></tr>
+  {% for inv in page_obj %}<tr>
+    <td><a href="{% url 'invoice_detail' inv.pk %}">{{ inv.number }}</a></td><td>{{ inv.subscription.number }}</td>
+    <td>{{ inv.customer }}</td><td>{{ inv.period_start|date:'d M Y' }} – {{ inv.period_end|date:'d M Y' }}</td>
+    <td class="n">₹{{ inv.total|floatformat:2|intcomma }}</td>
+  </tr>{% empty %}<tr><td colspan="5" class="muted">No created invoices to display.</td></tr>{% endfor %}
+</table></div>
+{% include "core/_pagination.html" %}
+{% endblock %}

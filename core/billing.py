@@ -188,7 +188,10 @@ def build_invoice(sub, period_start, confirm=None, today=None):
             if discount and disc_total:
                 Discount.objects.filter(pk=discount.pk).update(times_used=F("times_used") + 1)
     except IntegrityError:
-        return None  # unique (subscription, period_start) hit: already billed
+        if Invoice.objects.filter(subscription=sub, period_start=period_start).exists():
+            return None
+        # Preserve the billing cursor on unexpected integrity errors.
+        raise
     return inv
 
 
@@ -219,15 +222,18 @@ def run_billing(today=None):
     due = (Subscription.objects.filter(status=S.ACTIVE)
            .filter(Q(next_billing_date__lte=today) | Q(expiry_date__lte=today, plan__auto_close=True))
            .values_list("pk", flat=True))
-    stats = {"subscriptions": 0, "invoices": 0, "errors": 0}
+    stats = {"subscriptions": 0, "invoices": 0, "errors": 0,
+             "invoice_ids": [], "error_subscription_ids": []}
     for pk in due.iterator(chunk_size=500):
         try:
             made = bill_subscription(Subscription(pk=pk), today)
             stats["subscriptions"] += 1
             stats["invoices"] += len(made)
+            stats["invoice_ids"].extend(inv.pk for inv in made)
         except Exception:  # one bad record must not stop the run, but log it
             log.exception("Billing failed for subscription %s", pk)
             stats["errors"] += 1
+            stats["error_subscription_ids"].append(pk)
     return stats
 
 
