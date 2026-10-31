@@ -13,12 +13,12 @@ from datetime import timedelta
 from decimal import Decimal
 
 from django.contrib.auth.hashers import make_password
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 from django.utils import timezone
 
 from accounts.models import User
-from core.models import (Discount, Invoice, InvoiceLine, Payment, Plan, Product, ProductVariant,
+from core.models import (BillingRun, Discount, Invoice, InvoiceLine, Payment, Plan, Product, ProductVariant,
                          QuotationTemplate, Subscription, SubscriptionLine, Tax, TemplateLine,
                          add_months, money)
 
@@ -42,8 +42,13 @@ class Command(BaseCommand):
         t0 = time.perf_counter()
         rnd = random.Random(42)
         today = timezone.localdate()
+        if subs < 1:
+            raise CommandError("--subs must be positive.")
+        if not flush and Subscription.objects.exists():
+            self.stdout.write("Subscriptions already exist; no data changed. Use --flush only to replace demo data.")
+            return
         if flush:
-            for m in (Payment, InvoiceLine, Invoice, SubscriptionLine, Subscription, TemplateLine,
+            for m in (BillingRun, Payment, InvoiceLine, Invoice, SubscriptionLine, Subscription, TemplateLine,
                       QuotationTemplate, Discount, ProductVariant, Product, Plan, Tax):
                 m.objects.all().delete()
             User.objects.filter(is_superuser=False).delete()
@@ -99,7 +104,7 @@ class Command(BaseCommand):
         pwd = make_password("Demo@12345")
         n_cust = max(1, subs // 5)
         User.objects.bulk_create([User(email=f"customer{i}@example.test", password=pwd, company=f"Shop {i}",
-                                       role=User.Role.CUSTOMER) for i in range(n_cust)], batch_size=2000)
+                                       role=User.Role.CUSTOMER) for i in range(n_cust)], batch_size=2000, ignore_conflicts=True)
         customers = list(User.objects.filter(role=User.Role.CUSTOMER).values_list("id", flat=True))
 
         # ---- subscriptions
@@ -135,7 +140,8 @@ class Command(BaseCommand):
             unit = prod.sales_price + (odoo.extra_price if prod is crm and rnd.random() < 0.3 else 0)
             line_objs.append(SubscriptionLine(subscription=sub, product=prod, quantity=qty, unit_price=unit, tax=gst18))
             untaxed = money(unit * qty + plan.price)
-            tax = money(untaxed * D("0.18"))
+            product_subtotal = money(unit * qty)
+            tax = money(product_subtotal * D("0.18"))
             p = s
             for k in range(history):
                 inv_date, latest = p, k == history - 1
@@ -145,18 +151,27 @@ class Command(BaseCommand):
                                         due_date=due, period_start=p, period_end=plan.next_date(p) - timedelta(days=1),
                                         status="paid" if paid else "confirmed", untaxed_amount=untaxed,
                                         tax_amount=tax, total=untaxed + tax, amount_paid=untaxed + tax if paid else 0))
-                inv_lines.append((prod, qty, unit, untaxed, tax))
+                inv_lines.append((prod, qty, unit, product_subtotal, tax, plan))
                 pay_plan.append(inv_date + timedelta(days=rnd.randint(0, max(1, sub.payment_terms))) if paid else None)
                 p = plan.next_date(p)
+            if history:
+                # Forward stepping is authoritative (month-end arithmetic is not reversible).
+                sub.next_billing_date = p
+        Subscription.objects.bulk_update(sub_objs, ["next_billing_date"], batch_size=2000)
         SubscriptionLine.objects.bulk_create(line_objs, batch_size=5000)
         Invoice.objects.bulk_create(inv_objs, batch_size=5000)
         for inv in inv_objs:
             inv.number = f"INV/{inv.invoice_date.year}/{inv.pk:06d}"
         Invoice.objects.bulk_update(inv_objs, ["number"], batch_size=5000)
-        InvoiceLine.objects.bulk_create([
+        history_lines = [
             InvoiceLine(invoice=inv, product=prod, description=prod.name, quantity=qty, unit_price=unit,
                         subtotal=untaxed, tax_rate=D("18"), tax_amount=tax)
-            for inv, (prod, qty, unit, untaxed, tax) in zip(inv_objs, inv_lines)], batch_size=5000)
+            for inv, (prod, qty, unit, untaxed, tax, plan) in zip(inv_objs, inv_lines)]
+        history_lines.extend(
+            InvoiceLine(invoice=inv, description=f"{plan.name} – plan fee", quantity=1,
+                        unit_price=plan.price, subtotal=plan.price, tax_rate=0, tax_amount=0)
+            for inv, (_, _, _, _, _, plan) in zip(inv_objs, inv_lines) if plan.price > 0)
+        InvoiceLine.objects.bulk_create(history_lines, batch_size=5000)
         methods = [m for m, _ in Payment.Method.choices]
         Payment.objects.bulk_create([
             Payment(invoice=inv, amount=inv.total, method=rnd.choice(methods), date=min(d, today),

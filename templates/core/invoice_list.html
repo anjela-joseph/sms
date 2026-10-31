@@ -7,6 +7,7 @@
   <div class="row">{% for field in form %}<div>{{ field.label_tag }}{{ field }}{{ field.errors }}</div>{% endfor %}</div>
   <p class="muted">Dates filter invoice date. Outstanding means confirmed and not yet overdue.</p>
   <button class="btn">Apply filters</button> <a class="btn ghost" href="{% url 'invoice_list' %}">Reset</a>
+  <a class="btn ghost" href="{% url 'invoice_export' %}?{{ filter_query }}">Export filtered CSV</a>
 </form>
 <div class="card" style="overflow-x:auto"><table>
   <thead><tr><th>Invoice</th><th>Customer</th><th>Subscription / plan</th><th>Date</th><th>Due</th><th>Status</th><th class="n">Total</th><th class="n">Unpaid</th></tr></thead>
