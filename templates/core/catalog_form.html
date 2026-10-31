@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<div class="card catalog-form"><h1>{{ title }}</h1>
+<form method="post">{% csrf_token %}{{ form.as_p }}
+{% if variants %}<h2>Variants</h2><p class="muted">Extra price is added to the product's base price. Use the blank row to add a variant; save and edit again to add another.</p>
+{{ variants.management_form }}{{ variants.non_form_errors }}
+{% for variant in variants %}<fieldset><legend>Variant {{ forloop.counter }}</legend>{{ variant.as_p }}</fieldset>{% endfor %}
+{% endif %}
+<div class="subscription-actions"><button class="btn">Save</button><a class="btn ghost" href="{% url cancel_url %}">Cancel</a></div>
+</form></div>
+{% endblock %}

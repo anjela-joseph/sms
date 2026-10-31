@@ -6,6 +6,7 @@ from accounts import views as acc
 from core import views as core
 from core import finance_views as finance
 from core import subscription_views
+from core import catalog_views
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -24,6 +25,12 @@ urlpatterns = [
     path("billing/run/", core.run_billing_view, name="run_billing"),
     path("subscriptions/new/", core.new_subscription, name="new_subscription"),
     path("subscriptions/", subscription_views.subscription_list, name="subscription_list"),
+    path("products/", catalog_views.product_list, name="product_list"),
+    path("products/new/", catalog_views.product_form, name="product_create"),
+    path("products/<int:pk>/edit/", catalog_views.product_form, name="product_edit"),
+    path("plans/", catalog_views.plan_list, name="plan_list"),
+    path("plans/new/", catalog_views.plan_form, name="plan_create"),
+    path("plans/<int:pk>/edit/", catalog_views.plan_form, name="plan_edit"),
     path("subscriptions/<int:pk>/", subscription_views.subscription_detail, name="subscription_detail"),
     path("subscriptions/<int:pk>/action/", subscription_views.subscription_action, name="subscription_action"),
     path("invoices/<int:pk>/", core.invoice_detail, name="invoice_detail"),

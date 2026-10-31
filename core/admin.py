@@ -63,13 +63,13 @@ class TaxAdmin(AdminOnlyMixin, admin.ModelAdmin):
     list_display = ("name", "rate", "is_active")
 
 
-class VariantInline(admin.TabularInline):
+class VariantInline(AdminOnlyMixin, admin.TabularInline):
     model = ProductVariant
     extra = 1
 
 
 @admin.register(Product)
-class ProductAdmin(InternalMixin, admin.ModelAdmin):
+class ProductAdmin(AdminOnlyMixin, InternalMixin, admin.ModelAdmin):
     list_display = ("name", "product_type", "sales_price", "cost_price", "default_tax", "is_active")
     list_filter = ("product_type", "is_active")
     search_fields = ("name",)
@@ -77,7 +77,7 @@ class ProductAdmin(InternalMixin, admin.ModelAdmin):
 
 
 @admin.register(Plan)
-class PlanAdmin(InternalMixin, admin.ModelAdmin):
+class PlanAdmin(AdminOnlyMixin, InternalMixin, admin.ModelAdmin):
     list_display = ("name", "price", "billing_period", "min_quantity", "start_date", "end_date",
                     "auto_close", "closable", "pausable", "renewable")
     list_filter = ("billing_period", "pausable", "renewable")

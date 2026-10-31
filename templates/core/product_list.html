@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Products{% endblock %}
+{% block content %}
+<div class="row"><h1>Products</h1>{% if user.is_admin %}<p><a class="btn" href="{% url 'product_create' %}">New product</a></p>{% endif %}</div>
+<div class="card table-scroll"><table><thead><tr><th>Product</th><th>Type</th><th class="n">Base price</th><th>Variants / extra price</th><th>Status</th>{% if user.is_admin %}<th>Actions</th>{% endif %}</tr></thead><tbody>
+{% for product in page_obj %}<tr><td>{{ product.name }}</td><td>{{ product.get_product_type_display }}</td><td class="n">{{ currency }}{{ product.sales_price|floatformat:2 }}</td>
+<td>{% for variant in product.variants.all %}<div>{{ variant.attribute }}: {{ variant.value }} {% if variant.extra_price >= 0 %}+{% endif %}{{ variant.extra_price|floatformat:2 }}</div>{% empty %}<span class="muted">No variants</span>{% endfor %}</td>
+<td>{% if product.is_active %}Active{% else %}Inactive{% endif %}</td>{% if user.is_admin %}<td><a href="{% url 'product_edit' product.pk %}">Edit <span class="sr-only">{{ product.name }}</span></a></td>{% endif %}</tr>
+{% empty %}<tr><td colspan="6">No products yet.{% if user.is_admin %} <a href="{% url 'product_create' %}">Create your first product</a>.{% else %} Ask an admin to add a product.{% endif %}</td></tr>{% endfor %}
+</tbody></table>{% include "core/pagination.html" %}</div>
+{% endblock %}
