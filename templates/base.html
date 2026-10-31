@@ -54,10 +54,11 @@ input[type=checkbox]{width:auto}.grid>*{min-width:0;overflow-wrap:anywhere}
       <a href="{% url 'payment_list' %}">Payments</a>
       <a href="{% url 'discount_list' %}">Discounts</a>
       <a href="/admin/">Back office</a>
-      {% if user.is_admin %}<a href="{% url 'add_staff' %}">Add staff</a>{% endif %}
+      {% if user.is_admin %}<a href="{% url 'staff_list' %}">Staff</a>{% endif %}
     {% else %}
       <a href="{% url 'portal' %}">My account</a>
     {% endif %}
+    <a href="{% url 'profile' %}">Profile</a>
     <form method="post" action="{% url 'logout' %}" style="margin:0">{% csrf_token %}<button class="btn ghost" style="padding:4px 10px">Log out</button></form>
   {% else %}
     <a href="{% url 'login' %}">Log in</a><a href="{% url 'signup' %}">Sign up</a>
