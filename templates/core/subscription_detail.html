@@ -3,6 +3,13 @@
 {% block content %}
 <p><a href="{% url 'subscription_list' %}">&larr; Subscriptions</a></p>
 <h1>{{ sub.number }} <span class="badge {{ sub.status }}">{{ sub.get_status_display }}</span></h1>
+<div class="card"><h2>Subscription actions</h2>
+<p class="muted">Draft &rarr; Quotation &rarr; Confirmed &rarr; Active &rarr; Closed</p>
+<form method="post" action="{% url 'subscription_action' sub.pk %}" class="subscription-actions">{% csrf_token %}
+{% for value,label in actions %}<button class="btn {% if value == 'closed' %}danger{% endif %}" name="action" value="{{ value }}">{{ label }}</button>{% endfor %}
+{% if can_renew %}<button class="btn ghost" name="action" value="renew">Renew</button>{% endif %}
+{% if not actions and not can_renew %}<p class="muted">No actions available for this status and plan.</p>{% endif %}
+</form></div>
 <div class="card grid">
   <div><h2>Customer</h2><p>{{ sub.customer }}</p><p>{{ sub.customer.company }}</p></div>
   <div><h2>Plan &amp; terms</h2><p>{{ sub.plan }}</p><p>Payment terms: {{ sub.get_payment_terms_display }}</p><p>Template: {{ sub.template|default:"None" }}</p></div>
