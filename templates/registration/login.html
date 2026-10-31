@@ -1,4 +1,30 @@
 {% extends "base.html" %}{% block title %}Log in{% endblock %}
-{% block content %}<div class="card narrow"><h1>Log in</h1>
-<form method="post">{% csrf_token %}{{ form.as_p }}<button class="btn">Log in</button></form>
-<p class="muted" style="margin-top:14px"><a href="{% url 'password_reset' %}">Forgot password?</a> · <a href="{% url 'signup' %}">Create an account</a></p></div>{% endblock %}
+{% block content %}
+<style>
+.auth{display:grid;grid-template-columns:1fr 1fr;max-width:1100px;margin:48px auto;border-radius:12px;overflow:hidden;border:1px solid var(--line);background:var(--card)}
+.auth .side{background:linear-gradient(160deg,#1d2433,#3b5bdb);color:#fff;padding:36px}
+.auth .side h2{font-size:24px;margin:0 0 10px}.auth .side li{margin:8px 0;opacity:.9}
+.auth .main{padding:32px}
+@media(max-width:700px){.auth{grid-template-columns:1fr}.auth .side{display:none}}
+</style>
+<div class="auth">
+  <div class="side">
+    <h2>Brightloop</h2>
+    <p>Welcome back.</p>
+    <ul><li>Check your subscriptions</li><li>View and pay invoices</li><li>Manage your plan anytime</li></ul>
+  </div>
+  <div class="main">
+    <h1>Log in</h1>
+    {% if form.errors %}<div class="msg error">That email and password don't match. Please try again.</div>{% endif %}
+    <form method="post">{% csrf_token %}
+      <p><label for="id_username">Email</label>
+        <input type="email" name="username" id="id_username" value="{{ form.username.value|default:'' }}" autofocus required></p>
+      <p><label for="id_password">Password</label>
+        <input type="password" name="password" id="id_password" required></p>
+      <input type="hidden" name="next" value="{{ next }}">
+      <button class="btn" style="width:100%">Log in</button>
+    </form>
+    <p class="muted" style="margin-top:14px"><a href="{% url 'password_reset' %}">Forgot password?</a> · New here? <a href="{% url 'signup' %}">Create an account</a></p>
+  </div>
+</div>
+{% endblock %}
