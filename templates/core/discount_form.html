@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}{% if discount %}Edit{% else %}Create{% endif %} discount{% endblock %}
+{% block content %}
+<h1>{% if discount %}Edit{% else %}Create{% endif %} discount</h1>
+<form method="post" class="card" style="max-width:720px">{% csrf_token %}
+  {{ form.as_p }}
+  {% if discount %}<p class="muted">Used {{ discount.times_used }} times. Editing does not reset usage or change existing invoices.</p>{% endif %}
+  <button class="btn">Save discount</button> <a class="btn ghost" href="{% url 'discount_list' %}">Cancel</a>
+</form>
+{% endblock %}

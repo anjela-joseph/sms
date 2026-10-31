@@ -1,4 +1,5 @@
 import time
+from smtplib import SMTPException
 from datetime import date
 
 from django import forms
@@ -88,12 +89,13 @@ def dashboard(request):
 @internal_required
 @require_POST
 def run_billing_view(request):
-    t0 = time.perf_counter()
-    stats = billing.run_billing()
-    secs = time.perf_counter() - t0
-    messages.success(request, f"Billing run finished in {secs:.1f}s: {stats['invoices']} invoice(s) created "
-                              f"for {stats['subscriptions']} due subscription(s), {stats['errors']} error(s).")
-    return redirect("dashboard")
+    from django.db import transaction
+    from .billing_jobs import launch_billing
+    from .models import BillingRun
+
+    run = BillingRun.objects.create()
+    transaction.on_commit(lambda: launch_billing(run.pk))
+    return redirect("billing_result", pk=run.pk)
 
 
 # --------------------------------------------------------------------------- new subscription (sales)
@@ -103,11 +105,12 @@ class NewSubscriptionForm(forms.Form):
     template = forms.ModelChoiceField(QuotationTemplate.objects.select_related("plan"))
     start_date = forms.DateField(initial=date.today, widget=forms.DateInput(attrs={"type": "date"}))
 
-    def clean_template(self):
-        template = self.cleaned_data["template"]
-        if not template.plan.is_available():
-            raise ValidationError("This template's plan is not currently available. Choose another template.")
-        return template
+    def clean(self):
+        data = super().clean()
+        template, start = data.get("template"), data.get("start_date")
+        if template and start and not template.plan.is_available(start):
+            raise forms.ValidationError(f"The plan “{template.plan.name}” is not currently available.")
+        return data
 
 
 @internal_required
@@ -116,7 +119,8 @@ def new_subscription(request):
     if request.method == "POST" and form.is_valid():
         d = form.cleaned_data
         sub = billing.create_from_template(d["template"], d["customer"], request.user, d["start_date"])
-        messages.success(request, f"{sub} created as Draft. Use the status buttons to send a quotation.")
+        messages.success(request, f"{sub} created as Draft from “{d['template']}”. Move it through "
+                                  "Quotation → Confirmed → Active with the status buttons.")
         return redirect("subscription_detail", pk=sub.pk)
     return render(request, "core/new_subscription.html", {"form": form})
 
@@ -158,6 +162,8 @@ def invoice_detail(request, pk):
             return redirect("invoice_detail", pk=inv.pk)
         except ValidationError as e:
             messages.error(request, "; ".join(e.messages))
+        except (SMTPException, OSError):
+            messages.error(request, "Email could not be sent. Check your SMTP settings and try again.")
     return render(request, "core/invoice_detail.html", {
         "inv": inv, "lines": inv.lines.all(), "payments": inv.payments.all(), "pay_form": pay_form,
     })
