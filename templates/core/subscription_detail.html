@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}{{ sub.number }}{% endblock %}
+{% block content %}
+<p><a href="{% url 'subscription_list' %}">&larr; Subscriptions</a></p>
+<h1>{{ sub.number }} <span class="badge {{ sub.status }}">{{ sub.get_status_display }}</span></h1>
+<div class="card grid">
+  <div><h2>Customer</h2><p>{{ sub.customer }}</p><p>{{ sub.customer.company }}</p></div>
+  <div><h2>Plan &amp; terms</h2><p>{{ sub.plan }}</p><p>Payment terms: {{ sub.get_payment_terms_display }}</p><p>Template: {{ sub.template|default:"None" }}</p></div>
+  <div><h2>Dates</h2><p>Start: {{ sub.start_date|date:"d M Y" }}<br>Expiry: {{ sub.expiry_date|date:"d M Y"|default:"Not set" }}<br>Quotation valid until: {{ sub.quotation_valid_until|date:"d M Y"|default:"Not set" }}<br>Next billing: {{ sub.next_billing_date|date:"d M Y"|default:"Not scheduled" }}</p></div>
+</div>
+<div class="card table-scroll"><h2>Subscription lines</h2>
+<table><thead><tr><th>Product / variant</th><th class="n">Qty</th><th class="n">Unit price</th><th>Tax</th><th class="n">Amount (excl. tax)</th></tr></thead><tbody>
+{% for line in lines %}<tr><td>{{ line.description }}</td><td class="n">{{ line.quantity }}</td><td class="n">{{ currency }}{{ line.unit_price|floatformat:2 }}</td><td>{{ line.tax|default:"No tax" }}</td><td class="n">{{ currency }}{{ line.amount|floatformat:2 }}</td></tr>{% empty %}<tr><td colspan="5">No product lines on this subscription.</td></tr>{% endfor %}
+</tbody></table></div>
+<div class="card"><h2>Recurring estimate per {{ sub.plan.get_billing_period_display|lower }} period</h2>
+<p>Plan fee: {{ currency }}{{ sub.plan.price|floatformat:2 }}</p>
+<p>Subtotal (includes plan fee): {{ currency }}{{ subtotal|floatformat:2 }}<br>Tax before discounts: {{ currency }}{{ tax_total|floatformat:2 }}</p>
+<p><strong>Total before discounts: {{ currency }}{{ total|floatformat:2 }}</strong></p>
+<p class="muted">Estimates exclude discounts. Final charges are calculated when billing creates an invoice.</p></div>
+{% endblock %}

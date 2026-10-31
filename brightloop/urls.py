@@ -4,6 +4,7 @@ from django.urls import path
 
 from accounts import views as acc
 from core import views as core
+from core import subscription_views
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -21,6 +22,8 @@ urlpatterns = [
     path("dashboard/", core.dashboard, name="dashboard"),
     path("billing/run/", core.run_billing_view, name="run_billing"),
     path("subscriptions/new/", core.new_subscription, name="new_subscription"),
+    path("subscriptions/", subscription_views.subscription_list, name="subscription_list"),
+    path("subscriptions/<int:pk>/", subscription_views.subscription_detail, name="subscription_detail"),
     path("invoices/<int:pk>/", core.invoice_detail, name="invoice_detail"),
     path("portal/", core.portal, name="portal"),
     path("portal/subscriptions/<int:pk>/<str:action>/", core.portal_action, name="portal_action"),
