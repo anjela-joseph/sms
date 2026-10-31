@@ -13,12 +13,19 @@
   <div style="flex:none;min-width:0"><button class="btn">Apply</button></div>
 </form>
 <div class="grid">
+  <div class="card kpi"><div class="l">Monthly recurring revenue</div><div class="v">₹{{ kpi.mrr|floatformat:2|intcomma }}</div><div class="muted">current gross recurring charges</div></div>
   <div class="card kpi"><div class="l">Active subscriptions</div><div class="v">{{ active|intcomma }}</div><div class="muted">of {{ total_subs|intcomma }} total</div></div>
   <div class="card kpi"><div class="l">Revenue collected</div><div class="v">₹{{ kpi.revenue|floatformat:0|intcomma }}</div><div class="muted">payments in period</div></div>
   <div class="card kpi"><div class="l">Invoiced</div><div class="v">₹{{ kpi.invoiced|floatformat:0|intcomma }}</div><div class="muted">in period</div></div>
   <div class="card kpi"><div class="l">Outstanding (not yet due)</div><div class="v">₹{{ kpi.outstanding|floatformat:0|intcomma }}</div></div>
-  <div class="card kpi"><div class="l">Overdue</div><div class="v" style="color:var(--bad)">₹{{ kpi.overdue|floatformat:0|intcomma }}</div><div class="muted">{{ kpi.overdue_n|intcomma }} invoices · <a href="/admin/core/invoice/?due=overdue">chase</a></div></div>
+  <div class="card kpi"><div class="l">Overdue</div><div class="v" style="color:var(--bad)">₹{{ kpi.overdue|floatformat:0|intcomma }}</div><div class="muted">{{ kpi.overdue_n|intcomma }} invoices · <a href="{% url 'invoice_list' %}?status=overdue">chase</a></div></div>
 </div>
+<p class="muted">MRR includes plan fees and subscription lines for active, started, unexpired subscriptions, before discounts and tax. Yearly ÷ 12, weekly × 52 ÷ 12, daily × 365 ÷ 12. It follows the plan filter and always reflects today.</p>
+<div class="card"><h2>Revenue collected by plan</h2><p class="muted">Payments within the selected dates and plan, including tax.</p><table>
+  <tr><th>Plan</th><th class="n">Collected</th></tr>
+  {% for row in revenue_by_plan %}<tr><td>{{ row.invoice__subscription__plan__name|default:'No plan' }}</td><td class="n">₹{{ row.revenue|floatformat:2|intcomma }}</td></tr>
+  {% empty %}<tr><td colspan="2" class="muted">No payments in this period.</td></tr>{% endfor %}
+</table></div>
 <div class="grid" style="grid-template-columns:2fr 1fr">
   <div class="card"><h2>Billed vs collected <span class="legend muted"><span style="background:#c5d0f5"></span>billed<span style="background:var(--brand)"></span>collected</span></h2>
     <div class="bars">{% for m in chart %}<div class="m"><div class="pair">
@@ -33,5 +40,5 @@
   {% for inv in overdue %}<tr><td><a href="{% url 'invoice_detail' inv.pk %}">{{ inv.number }}</a></td><td>{{ inv.customer }}</td>
   <td>{{ inv.due_date|date:"d M Y" }}</td><td class="n">₹{{ inv.due|floatformat:2|intcomma }}</td></tr>
   {% empty %}<tr><td colspan="4" class="muted">Nothing overdue.</td></tr>{% endfor %}</table></div>
-<p class="muted">Page computed in {{ elapsed_ms }} ms.</p>
+<p class="muted">Report calculations took {{ elapsed_ms }} ms (excludes rendering and network).</p>
 {% endblock %}

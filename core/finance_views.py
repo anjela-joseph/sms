@@ -1,10 +1,12 @@
 """Billing and report pages, kept separate from subscription and account views."""
+import csv
 from django import forms
 from django.contrib import messages
 from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import Q, Sum, Value
 from django.db.models.functions import Concat
+from django.http import HttpResponseBadRequest, StreamingHttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
@@ -70,10 +72,43 @@ def invoice_list(request):
     return render(request, "core/invoice_list.html", {**context, "form": form})
 
 
+class CSVBuffer:
+    def write(self, value):
+        return value
 
 
+def csv_text(value):
+    """Keep user-entered text from becoming a spreadsheet formula."""
+    text = str(value or "")
+    return "'" + text if text.lstrip().startswith(("=", "+", "-", "@")) or text.startswith(("\t", "\r", "\n")) else text
 
 
+@internal_required
+def invoice_export(request):
+    form = InvoiceFilterForm(request.GET)
+    invoices = filtered_invoices(form)
+    if not form.is_valid():
+        return HttpResponseBadRequest("Invalid invoice filters. Correct the filters before exporting.")
+
+    def rows():
+        writer = csv.writer(CSVBuffer())
+        yield "\ufeff"  # UTF-8 BOM for spreadsheet applications
+        yield writer.writerow(["Invoice", "Customer", "Email", "Subscription", "Plan", "Invoice date", "Due date",
+                               "Status", "Total", "Paid", "Amount due"])
+        today = timezone.localdate()
+        labels = dict(Invoice.Status.choices)
+        values = invoices.values_list("number", "customer__first_name", "customer__last_name", "customer__company",
+                                      "customer__email", "subscription__number", "subscription__plan__name",
+                                      "invoice_date", "due_date", "status", "total", "amount_paid")
+        for number, first, last, company, email, subscription, plan, dated, due, status, total, paid in values.iterator(chunk_size=1000):
+            label = "Overdue" if status == "confirmed" and due < today else "Outstanding" if status == "confirmed" else labels[status]
+            yield writer.writerow([csv_text(number), csv_text(f"{first} {last}".strip() or company), csv_text(email),
+                                   csv_text(subscription), csv_text(plan), dated, due, label,
+                                   f"{total:.2f}", f"{paid:.2f}", "0.00" if status == "cancelled" else f"{total - paid:.2f}"])
+
+    response = StreamingHttpResponse(rows(), content_type="text/csv; charset=utf-8")
+    response["Content-Disposition"] = 'attachment; filename="brightloop-invoices.csv"'
+    return response
 
 
 @internal_required

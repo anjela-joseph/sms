@@ -41,6 +41,7 @@ urlpatterns = [
     path("billing/run/", core.run_billing_view, name="run_billing"),
     path("billing/runs/<int:pk>/", finance.billing_result, name="billing_result"),
     path("invoices/", finance.invoice_list, name="invoice_list"),
+    path("invoices/export/", finance.invoice_export, name="invoice_export"),
     path("invoices/<int:pk>/", core.invoice_detail, name="invoice_detail"),
     path("payments/", finance.payment_list, name="payment_list"),
     path("discounts/", finance.discount_list, name="discount_list"),

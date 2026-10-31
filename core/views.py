@@ -17,6 +17,7 @@ from accounts.models import User
 from accounts.permissions import internal_required
 
 from . import billing
+from .reporting import monthly_recurring_revenue
 from .models import ZERO, Invoice, Payment, Plan, QuotationTemplate, Subscription, add_months
 
 S, I = Subscription.Status, Invoice.Status
@@ -35,10 +36,16 @@ def dashboard(request):
     t0 = time.perf_counter()
     today = timezone.localdate()
     plan_id = request.GET.get("plan") or None
+    if plan_id and (not plan_id.isdecimal() or len(plan_id) > 18):
+        messages.error(request, "Invalid plan filter; showing all plans.")
+        plan_id = None
     try:
         d_from = date.fromisoformat(request.GET["from"]) if request.GET.get("from") else add_months(today, -5).replace(day=1)
         d_to = date.fromisoformat(request.GET["to"]) if request.GET.get("to") else today
+        if d_from > d_to or (d_to.year - d_from.year) * 12 + d_to.month - d_from.month > 119 or d_to.year == 9999:
+            raise ValueError
     except ValueError:
+        messages.error(request, "Choose a valid date range of at most 10 years. Showing the last six months.")
         d_from, d_to = add_months(today, -5).replace(day=1), today
 
     subs = Subscription.objects.all()
@@ -49,7 +56,6 @@ def dashboard(request):
             pays.filter(invoice__subscription__plan_id=plan_id)
 
     sub_counts = dict(subs.values_list("status").annotate(n=Count("id")).order_by())
-    money0 = Coalesce(Sum(DUE), ZERO, output_field=DecimalField())
     open_q = Q(status=I.CONFIRMED)
     kpi = invs.aggregate(
         outstanding=Coalesce(Sum(DUE, filter=open_q & Q(due_date__gte=today)), ZERO, output_field=DecimalField()),
@@ -59,6 +65,9 @@ def dashboard(request):
                           output_field=DecimalField()),
     )
     kpi["revenue"] = pays.aggregate(v=Coalesce(Sum("amount"), ZERO, output_field=DecimalField()))["v"]
+    kpi["mrr"] = monthly_recurring_revenue(subs)
+    revenue_by_plan = list(pays.order_by().values("invoice__subscription__plan_id", "invoice__subscription__plan__name")
+                           .annotate(revenue=Sum("amount")).order_by("-revenue"))
 
     by_month = {r["m"].strftime("%b %Y"): r["v"] for r in
                 pays.annotate(m=TruncMonth("date")).values("m").annotate(v=Sum("amount")).order_by("m")}
@@ -79,6 +88,7 @@ def dashboard(request):
                .order_by("due_date")[:10])
     return render(request, "core/dashboard.html", {
         "kpi": kpi, "sub_counts": sub_counts, "active": sub_counts.get(S.ACTIVE, 0),
+        "revenue_by_plan": revenue_by_plan,
         "total_subs": sum(sub_counts.values()), "chart": chart, "overdue": overdue,
         "plans": Plan.objects.order_by("name"), "plan_id": plan_id, "d_from": d_from, "d_to": d_to,
         "status_rows": status_rows, "due_now": subs.filter(status=S.ACTIVE, next_billing_date__lte=today).count(),
