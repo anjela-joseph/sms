@@ -289,10 +289,9 @@ class Invoice(models.Model):
     class Meta:
         ordering = ["-invoice_date", "-id"]
         constraints = [
-            # "Nothing billed twice": one live invoice per subscription per billing period.
+            # A cancelled invoice still reserves its subscription period.
             models.UniqueConstraint(
                 fields=["subscription", "period_start"],
-                condition=~Q(status="cancelled"),
                 name="uniq_invoice_per_subscription_period",
             )
         ]
@@ -360,3 +359,17 @@ class Payment(models.Model):
 
     def __str__(self):
         return f"{self.get_method_display()} {self.amount} → {self.invoice}"
+
+
+class BillingRun(models.Model):
+    """Durable results for the background billing command and its paginated report."""
+    status = models.CharField(max_length=12, default="queued", choices=[
+        ("queued", "Queued"), ("running", "Running"), ("completed", "Completed"), ("failed", "Failed")])
+    created_at = models.DateTimeField(auto_now_add=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+    subscriptions = models.PositiveIntegerField(default=0)
+    invoice_ids = models.JSONField(default=list)
+    error_subscription_ids = models.JSONField(default=list)
+    error_message = models.CharField(max_length=255, blank=True)
+    elapsed_seconds = models.FloatField(default=0)
+

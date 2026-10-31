@@ -3,10 +3,10 @@ from django import forms
 from django.core.paginator import Paginator
 from django.db.models import Q, Value
 from django.db.models.functions import Concat
-from django.shortcuts import render
+from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
 from accounts.permissions import internal_required
-from .models import Invoice
+from .models import BillingRun, Invoice
 
 
 class DateRangeForm(forms.Form):
@@ -69,3 +69,15 @@ def invoice_list(request):
     form = InvoiceFilterForm(request.GET)
     context = page_context(request, filtered_invoices(form))
     return render(request, "core/invoice_list.html", {**context, "form": form})
+
+
+
+@internal_required
+def billing_result(request, pk):
+    run = get_object_or_404(BillingRun, pk=pk)
+    invoices = Invoice.objects.filter(pk__in=run.invoice_ids).select_related("subscription", "customer")
+    return render(request, "core/billing_result.html", {
+        **page_context(request, invoices), "run": run,
+        "created_count": len(run.invoice_ids), "error_count": len(run.error_subscription_ids),
+    })
+
