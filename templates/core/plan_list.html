@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Plans{% endblock %}
+{% block content %}
+<div class="row"><h1>Plans</h1>{% if user.is_admin %}<p><a class="btn" href="{% url 'plan_create' %}">New plan</a></p>{% endif %}</div>
+<div class="card table-scroll"><table><thead><tr><th>Plan</th><th class="n">Fee / period</th><th>Available dates</th><th>Minimum quantity</th><th>Options</th>{% if user.is_admin %}<th>Actions</th>{% endif %}</tr></thead><tbody>
+{% for plan in page_obj %}<tr><td>{{ plan.name }}<br><span class="badge">{% if plan.is_available %}Available{% else %}Unavailable{% endif %}</span></td><td class="n">{{ currency }}{{ plan.price|floatformat:2 }} / {{ plan.get_billing_period_display|lower }}</td><td>{{ plan.start_date|date:"d M Y" }} &ndash; {{ plan.end_date|date:"d M Y"|default:"No end date" }}</td><td>{{ plan.min_quantity }}</td>
+<td>Pause: {{ plan.pausable|yesno:"Yes,No" }}<br>Renew: {{ plan.renewable|yesno:"Yes,No" }}<br>Close early: {{ plan.closable|yesno:"Yes,No" }}<br>Auto-close: {{ plan.auto_close|yesno:"Yes,No" }}</td>
+{% if user.is_admin %}<td><a href="{% url 'plan_edit' plan.pk %}">Edit <span class="sr-only">{{ plan.name }}</span></a></td>{% endif %}</tr>
+{% empty %}<tr><td colspan="6">No plans yet.{% if user.is_admin %} <a href="{% url 'plan_create' %}">Create your first plan</a>.{% else %} Ask an admin to add a plan.{% endif %}</td></tr>{% endfor %}
+</tbody></table>{% include "core/pagination.html" %}</div>
+{% endblock %}
