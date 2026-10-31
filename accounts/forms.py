@@ -43,3 +43,19 @@ class StaffCreateForm(UserCreationForm):
             group, _ = Group.objects.get_or_create(name="Staff")
             user.groups.add(group)
         return user
+
+
+class ProfileForm(forms.ModelForm):
+    """Customer edits their own details (shown on invoices). Email stays fixed: it is the login."""
+
+    class Meta:
+        model = User
+        fields = ("first_name", "last_name", "company", "phone", "address")
+        widgets = {"address": forms.Textarea(attrs={"rows": 3})}
+
+    def clean_phone(self):
+        phone = self.cleaned_data["phone"].strip()
+        digits = phone.replace(" ", "").replace("-", "").lstrip("+")
+        if phone and (not digits.isdigit() or not 7 <= len(digits) <= 15):
+            raise forms.ValidationError("Enter a valid phone number (digits only, 7–15 long).")
+        return phone

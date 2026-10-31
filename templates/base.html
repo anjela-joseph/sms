@@ -45,6 +45,8 @@ form p{margin:0 0 12px}label{display:block;font-size:13px;color:var(--muted);mar
       <a href="{% url 'product_list' %}">Products</a>
       <a href="{% url 'plan_list' %}">Plans</a>
       <a href="{% url 'invoice_list' %}">Invoices</a>
+      <a href="{% url 'payment_list' %}">Payments</a>
+      <a href="{% url 'discount_list' %}">Discounts</a>
       <a href="/admin/">Back office</a>
       {% if user.is_admin %}<a href="{% url 'add_staff' %}">Add staff</a>{% endif %}
     {% else %}

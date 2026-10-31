@@ -134,9 +134,13 @@ class Discount(models.Model):
         return f"{self.name} (-{v})"
 
     def clean(self):
-        if self.discount_type == self.Type.PERCENT and not (0 < self.value <= 100):
+        if self.value is not None and self.value <= 0:
+            raise ValidationError({"value": "Discount value must be positive."})
+        if self.discount_type == self.Type.PERCENT and self.value is not None and self.value > 100:
             raise ValidationError({"value": "Percentage must be between 0 and 100."})
-        if self.end_date and self.end_date < self.start_date:
+        if self.min_purchase is not None and self.min_purchase < 0:
+            raise ValidationError({"min_purchase": "Minimum purchase cannot be negative."})
+        if self.end_date and self.start_date and self.end_date < self.start_date:
             raise ValidationError({"end_date": "End date is before start date."})
 
     def is_valid_on(self, d: date) -> bool:
@@ -289,10 +293,9 @@ class Invoice(models.Model):
     class Meta:
         ordering = ["-invoice_date", "-id"]
         constraints = [
-            # "Nothing billed twice": one live invoice per subscription per billing period.
+            # A cancelled invoice still reserves its subscription period.
             models.UniqueConstraint(
                 fields=["subscription", "period_start"],
-                condition=~Q(status="cancelled"),
                 name="uniq_invoice_per_subscription_period",
             )
         ]
@@ -360,3 +363,16 @@ class Payment(models.Model):
 
     def __str__(self):
         return f"{self.get_method_display()} {self.amount} → {self.invoice}"
+
+
+class BillingRun(models.Model):
+    """Durable results for the background billing command and its paginated report."""
+    status = models.CharField(max_length=12, default="queued", choices=[
+        ("queued", "Queued"), ("running", "Running"), ("completed", "Completed"), ("failed", "Failed")])
+    created_at = models.DateTimeField(auto_now_add=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+    subscriptions = models.PositiveIntegerField(default=0)
+    invoice_ids = models.JSONField(default=list)
+    error_subscription_ids = models.JSONField(default=list)
+    error_message = models.CharField(max_length=255, blank=True)
+    elapsed_seconds = models.FloatField(default=0)

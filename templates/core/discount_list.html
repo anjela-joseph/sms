@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Discounts{% endblock %}
+{% block content %}
+<div class="row" style="margin-bottom:16px"><h1>Discounts</h1>{% if user.is_admin %}<div style="text-align:right"><a class="btn" href="{% url 'discount_create' %}">Create discount</a></div>{% endif %}</div>
+<p class="muted">An eligible assigned discount takes priority; otherwise billing applies the best available automatic discount. Eligibility is checked on the billing run date.</p>
+<div class="card" style="overflow-x:auto"><table>
+  <tr><th>Name / amount</th><th>Dates</th><th>Usage</th><th>Product scope</th><th>Availability</th><th></th></tr>
+  {% for discount in page_obj %}<tr>
+    <td>{{ discount }}<br><span class="muted">Minimum ₹{{ discount.min_purchase }} / {{ discount.min_quantity }} units</span></td>
+    <td>{{ discount.start_date|date:'d M Y' }} – {{ discount.end_date|date:'d M Y'|default:'No expiry' }}</td>
+    <td>{{ discount.times_used }} / {{ discount.usage_limit|default_if_none:'Unlimited' }}</td>
+    <td>{% for product in discount.products.all %}{{ product.name }}{% if not forloop.last %}, {% endif %}{% empty %}Whole subscription{% endfor %}</td>
+    <td>{% if discount.available_today %}<span class="badge active">Available today</span>{% else %}<span class="badge">Inactive / expired / exhausted</span>{% endif %}</td>
+    <td>{% if user.is_admin %}<a href="{% url 'discount_edit' discount.pk %}">Edit</a>{% endif %}</td>
+  </tr>{% empty %}<tr><td colspan="6" class="muted">No discounts yet.</td></tr>{% endfor %}
+</table></div>
+{% include 'core/_pagination.html' %}
+{% endblock %}

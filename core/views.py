@@ -1,4 +1,5 @@
 import time
+from smtplib import SMTPException
 from datetime import date
 
 from django import forms
@@ -88,12 +89,13 @@ def dashboard(request):
 @internal_required
 @require_POST
 def run_billing_view(request):
-    t0 = time.perf_counter()
-    stats = billing.run_billing()
-    secs = time.perf_counter() - t0
-    messages.success(request, f"Billing run finished in {secs:.1f}s: {stats['invoices']} invoice(s) created "
-                              f"for {stats['subscriptions']} due subscription(s), {stats['errors']} error(s).")
-    return redirect("dashboard")
+    from django.db import transaction
+    from .billing_jobs import launch_billing
+    from .models import BillingRun
+
+    run = BillingRun.objects.create()
+    transaction.on_commit(lambda: launch_billing(run.pk))
+    return redirect("billing_result", pk=run.pk)
 
 
 # --------------------------------------------------------------------------- new subscription (sales)
@@ -158,6 +160,8 @@ def invoice_detail(request, pk):
             return redirect("invoice_detail", pk=inv.pk)
         except ValidationError as e:
             messages.error(request, "; ".join(e.messages))
+        except (SMTPException, OSError):
+            messages.error(request, "Email could not be sent. Check your SMTP settings and try again.")
     return render(request, "core/invoice_detail.html", {
         "inv": inv, "lines": inv.lines.all(), "payments": inv.payments.all(), "pay_form": pay_form,
     })
